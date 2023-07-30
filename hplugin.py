@@ -2,11 +2,12 @@ import logging
 import os
 import sys
 from pathlib import Path
-
-from .hdata import HierarchicalData
+import pprint
 
 import pcbnew
 import wx
+
+from .hdata import HierarchicalData
 
 logger = logging.getLogger("hierpcb")
 
@@ -32,13 +33,14 @@ class HierarchicalPCBPlugin(pcbnew.ActionPlugin):
         wx_frame = wx.FindWindowByName("PcbFrame")
         board = pcbnew.GetBoard()
 
-        if not logger.handlers:
-            logger.addHandler(
-                logging.FileHandler(
-                    filename=board.GetFileName() + ".hierpcb.log",
-                    mode="w",
-                )
+        for lH in list(logger.handlers):
+            logger.removeHandler(lH)
+        logger.addHandler(
+            logging.FileHandler(
+                filename=board.GetFileName() + ".hierpcb.log",
+                mode="w",
             )
+        )
 
         # set up logger
         logger.info(
@@ -46,4 +48,4 @@ class HierarchicalPCBPlugin(pcbnew.ActionPlugin):
         )
 
         hD = HierarchicalData(board)
-        logger.info(hD.sheets)
+        logger.info(hD.root)
