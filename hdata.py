@@ -5,14 +5,17 @@ import pcbnew
 
 import logging
 
-logger = logging.getLogger("hierpcb.hierarchical")
+logger = logging.getLogger("hierpcb")
+
+
+SchPath = Tuple[str, ...]
 
 
 @dataclass
 class SchSheet:
     """Class to hold information about a schematic sheet."""
 
-    key: str  # The full sheet identifier.
+    key: SchPath  # The full sheet identifier.
     file: Path  # The file name of the schematic sheet.
     name: str  # The human-readable name of the schematic sheet.
     has_pcb: bool = False
@@ -22,6 +25,7 @@ class SchSheet:
 class HierarchicalData:
     def __init__(self, board: pcbnew.BOARD):
         self.board = board
+        self.sheets = get_sheet_hierarchy(board)
         pass
 
 
@@ -34,10 +38,11 @@ def get_sheet_hierarchy(
     Note that this cannot find sheets that are not referenced by at least one footprint.
     """
 
-    sheets: Dict[str, SchSheet] = {}
+    sheets: Dict[tuple(str), SchSheet] = {}
 
     for fp in board.GetFootprints():
-        key = fp.GetPath()
+        key = fp.GetPath().AsString().split("/")
+        key = tuple(key[:-1])
 
         logger.info(f"{fp.GetReference()} -- {key}")
 
@@ -50,7 +55,7 @@ def get_sheet_hierarchy(
             sheet_name = fp.GetProperty("Sheetname")
         except KeyError:
             logger.debug(f"Skipping {fp.GetReference()} -- no Sheetfile.")
-            continue``
+            continue
 
         # Footprint is on a sheet.
         sheets[key] = SchSheet(
@@ -60,3 +65,5 @@ def get_sheet_hierarchy(
             has_pcb=False,
             parent=None,
         )
+
+    return sheets
