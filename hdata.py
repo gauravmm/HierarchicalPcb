@@ -1,7 +1,9 @@
+import collections
 import dataclasses
 import logging
 from dataclasses import dataclass
 from pathlib import Path
+import string
 from typing import Dict, List, Optional, Tuple
 
 import pcbnew
@@ -11,12 +13,38 @@ logger = logging.getLogger("hierpcb")
 
 SchPath = Tuple[str, ...]
 
+FootprintID = str  # Unique id for a footprint across all sub-schematics.
+
 
 class PCBRoom:
     """Holds the data for a 'room' in the PCB layout, correponding to the layout for a schematic sheet."""
 
     def __init__(self, path: Path):
         self.path = path
+        # Load the room data from the file.
+        self.subboard = pcbnew.LoadBoard(str(path))
+        assert self.subboard is not None
+        logger.info(
+            f"Imported {path}, with "
+            f"{len(self.subboard.GetFootprints())} footprints, "
+            f"{len(self.subboard.GetTracks())} tracks, and "
+            f"{len(self.subboard.GetDrawings())} drawings."
+        )
+
+    def get_anchor_refs(self) -> Dict[FootprintID, str]:
+        """Get the reference prefixes of the footprints that can be used as anchors."""
+        rv = {}
+        for fp in self.subboard.GetFootprints():
+            fid = fp.GetPath().AsString().split("/")[-1]
+            rv[fid] = fp.GetReference()
+
+        return rv
+
+    @property
+    def is_legal(self) -> bool:
+        """Check if the room can be handled by our engine."""
+        # For a room to be legal, there must be at least one footprint. That's it.
+        return len(self.subboard.GetFootprints()) > 0
 
 
 class SchSheet:
@@ -107,7 +135,7 @@ def get_sheet_key_from_footprint(fp: pcbnew.FOOTPRINT) -> Optional[SchPath]:
 
 def get_sheet_hierarchy(
     board: pcbnew.BOARD,
-) -> SchSheet:
+) -> Tuple[SchSheet, Dict[Path, PCBRoom]]:
     """Infer the sheet hierarchy from footprint data.
 
     While this should be better handled by examining the schematics, we can't yet do that in KiCad.
@@ -144,4 +172,4 @@ def get_sheet_hierarchy(
 
             curr_sheet.pcb = pcb_rooms[sheet_file]
 
-    return root_sheets
+    return root_sheets, {k: v for k, v in pcb_rooms.items() if v is not None}
