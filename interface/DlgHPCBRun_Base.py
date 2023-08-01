@@ -24,8 +24,8 @@ class DlgHPCBRun_Base(wx.Dialog):
             id=wx.ID_ANY,
             title="HierarchicalPCB",
             pos=wx.DefaultPosition,
-            size=wx.Size(465, 709),
-            style=wx.DEFAULT_DIALOG_STYLE,
+            size=wx.Size(465, 788),
+            style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
         )
 
         self.SetSizeHints(wx.DefaultSize, wx.DefaultSize)
@@ -45,29 +45,12 @@ class DlgHPCBRun_Base(wx.Dialog):
 
         bSizerMain.Add(self.m_staticText1, 0, wx.ALL, 5)
 
-        self.m_scrolledWindowApplyTo = wx.ScrolledWindow(
-            self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.VSCROLL
-        )
-        self.m_scrolledWindowApplyTo.SetScrollRate(5, 5)
-        self.m_scrolledWindowApplyTo.SetMinSize(wx.Size(-1, 300))
-
-        bSizer3 = wx.BoxSizer(wx.VERTICAL)
-
         self.treeApplyTo = wx.dataview.TreeListCtrl(
-            self.m_scrolledWindowApplyTo,
-            wx.ID_ANY,
-            wx.DefaultPosition,
-            wx.DefaultSize,
-            wx.dataview.TL_3STATE,
+            self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.dataview.TL_3STATE
         )
         self.treeApplyTo.SetMinSize(wx.Size(-1, 300))
 
-        bSizer3.Add(self.treeApplyTo, 1, wx.ALL | wx.EXPAND, 5)
-
-        self.m_scrolledWindowApplyTo.SetSizer(bSizer3)
-        self.m_scrolledWindowApplyTo.Layout()
-        bSizer3.Fit(self.m_scrolledWindowApplyTo)
-        bSizerMain.Add(self.m_scrolledWindowApplyTo, 1, wx.EXPAND, 5)
+        bSizerMain.Add(self.treeApplyTo, 1, wx.ALL | wx.EXPAND, 5)
 
         self.m_staticText41 = wx.StaticText(
             self, wx.ID_ANY, "Reset to Default", wx.DefaultPosition, wx.DefaultSize, 0
@@ -186,7 +169,7 @@ class DlgHPCBRun_Base(wx.Dialog):
         m_sdbSizer1.AddButton(self.m_sdbSizer1Cancel)
         m_sdbSizer1.Realize()
 
-        bSizerMain.Add(m_sdbSizer1, 1, wx.EXPAND, 5)
+        bSizerMain.Add(m_sdbSizer1, 0, wx.EXPAND, 5)
 
         self.SetSizer(bSizerMain)
         self.Layout()

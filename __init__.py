@@ -7,7 +7,7 @@ with Path("C:\\Users\\User\\Desktop\\hierarchical.log").open("w") as f:
         from .hplugin import HierarchicalPCBPlugin
 
         HierarchicalPCBPlugin().register()
-
+        f.write("Registered.\n")
     except Exception as e:
         f.write(str(e))
         f.write(traceback.format_exc())

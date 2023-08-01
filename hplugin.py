@@ -1,15 +1,19 @@
 import logging
 import os
-import sys
-from pathlib import Path
 import pprint
+import sys
+import time
+import traceback
+from pathlib import Path
 
 import pcbnew
 import wx
 
 from .hdata import HierarchicalData
+from .interface import DlgHPCBRun
 
 logger = logging.getLogger("hierpcb")
+logger.setLevel(logging.DEBUG)
 
 
 class HierarchicalPCBPlugin(pcbnew.ActionPlugin):
@@ -29,6 +33,9 @@ class HierarchicalPCBPlugin(pcbnew.ActionPlugin):
         self.show_toolbar_button = True
 
     def Run(self):
+        self.RunActual()
+
+    def RunActual(self):
         # grab PCB editor frame
         wx_frame = wx.FindWindowByName("PcbFrame")
         board = pcbnew.GetBoard()
@@ -36,10 +43,7 @@ class HierarchicalPCBPlugin(pcbnew.ActionPlugin):
         for lH in list(logger.handlers):
             logger.removeHandler(lH)
         logger.addHandler(
-            logging.FileHandler(
-                filename=board.GetFileName() + ".hierpcb.log",
-                mode="w",
-            )
+            logging.FileHandler(filename=board.GetFileName() + ".hierpcb.log", mode="w")
         )
 
         # set up logger
@@ -48,4 +52,7 @@ class HierarchicalPCBPlugin(pcbnew.ActionPlugin):
         )
 
         hD = HierarchicalData(board)
-        logger.info(hD.root)
+        logger.debug(hD.root_sheet)
+
+        rv = DlgHPCBRun(wx_frame, hD).ShowModal()
+        logger.info(rv)

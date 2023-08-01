@@ -1,1 +1,1 @@
-from DlgHPCBRun import DlgHPCBRun
+from .DlgHPCBRun import DlgHPCBRun

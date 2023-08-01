@@ -75,7 +75,7 @@ class SchSheet:
     def has_metadata(self):
         return self.file is not None and self.name is not None
 
-    def get(self, key: SchPath, create=False):
+    def get(self, key: SchPath, create=False) -> "SchSheet":
         """Get a sheet by its key."""
         # If the key is empty, we are done.
         if len(key) == 0:
@@ -85,27 +85,36 @@ class SchSheet:
         if cons not in self.children:
             if not create:
                 raise KeyError(f"Sheet {key} not found in {self.identifier}.")
-            self.children[cons] = SchSheet(key, self)
+            self.children[cons] = SchSheet(cons, self)
         # Recur on the rest in the child sheet.
         return self.children[cons].get(rest, create)
+
+    def tree_iter(self, skip_root=False):
+        """Iterate over the tree."""
+        if not skip_root:
+            yield self
+        for _, child in sorted(self.children.items()):
+            yield from child.tree_iter()
 
     @property
     def identifier(self) -> str:
         if self.parent is None:
             return self.sheetid
-        return self.parent.identifier / self.sheetid
+        return self.parent.identifier + "/" + self.sheetid
 
     @property
     def human_name(self) -> str:
-        me = self.name if self.name is not None else self.sheetid[:8]
+        return self.name if self.name is not None else self.sheetid[:8]
+
+    @property
+    def human_path(self) -> str:
         if self.parent is None:
-            return me
-        return self.parent.human_name() + "/" + me
+            return self.human_name()
+        return self.parent.human_name() + "/" + self.human_name()
 
     def __str__(self) -> str:
-        me = self.name if self.name is not None else self.sheetid[:8]
         # Head line with the sheet name and whether it has a PCB layout.
-        rv = [f"{me}" + (f" (+ PCB {self.pcb.path})" if self.pcb else "")]
+        rv = [self.human_name() + (f" (+ PCB {self.pcb.path})" if self.pcb else "")]
         # If there are children, print them.
         for _, child in sorted(self.children.items()):
             c_str = str(child).splitlines()
@@ -119,8 +128,7 @@ class SchSheet:
 class HierarchicalData:
     def __init__(self, board: pcbnew.BOARD):
         self.board = board
-        self.root = get_sheet_hierarchy(board)
-        pass
+        self.root_sheet, self.pcb_rooms = get_sheet_hierarchy(board)
 
 
 def get_sheet_key_from_footprint(fp: pcbnew.FOOTPRINT) -> Optional[SchPath]:
@@ -144,7 +152,7 @@ def get_sheet_hierarchy(
 
     # None means the sheet is known not to have a PCB layout.
     pcb_rooms: Dict[str, Optional[PCBRoom]] = {}
-    root_sheets: Optional[SchSheet] = SchSheet("", None)
+    root_sheet: Optional[SchSheet] = SchSheet("", None)
 
     for fp in board.GetFootprints():
         key = get_sheet_key_from_footprint(fp)
@@ -152,7 +160,7 @@ def get_sheet_hierarchy(
         if key is None:
             continue
         # Get the sheet for this footprint, creating it if necessary.
-        curr_sheet = root_sheets.get(key, create=True)
+        curr_sheet = root_sheet.get(key, create=True)
 
         if not curr_sheet.has_metadata():
             try:
@@ -172,4 +180,4 @@ def get_sheet_hierarchy(
 
             curr_sheet.pcb = pcb_rooms[sheet_file]
 
-    return root_sheets, {k: v for k, v in pcb_rooms.items() if v is not None}
+    return root_sheet, {k: v for k, v in pcb_rooms.items() if v is not None}
