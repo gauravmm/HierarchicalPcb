@@ -71,6 +71,7 @@ class SchSheet:
 
         # Metadata for UI rendering:
         self.list_ref: Optional[wx.TreeListItem] = None
+        self.checked: bool = False
 
     def set_metadata(self, file: Path, name: str) -> None:
         self.file = file

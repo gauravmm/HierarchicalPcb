@@ -45,16 +45,21 @@ class DlgHPCBRun_Base(wx.Dialog):
 
         bSizerMain.Add(self.m_staticText1, 0, wx.ALL, 5)
 
-        self.treeApplyTo = wx.dataview.TreeListCtrl(
+        self.treeApplyTo = wx.TreeCtrl(
             self,
             wx.ID_ANY,
             wx.DefaultPosition,
             wx.DefaultSize,
-            wx.dataview.TL_CHECKBOX | wx.dataview.TL_SINGLE,
+            wx.TR_DEFAULT_STYLE
+            | wx.TR_FULL_ROW_HIGHLIGHT
+            | wx.TR_HIDE_ROOT
+            | wx.TR_NO_LINES
+            | wx.TR_SINGLE
+            | wx.TR_TWIST_BUTTONS,
         )
         self.treeApplyTo.SetMinSize(wx.Size(-1, 300))
 
-        bSizerMain.Add(self.treeApplyTo, 1, wx.ALL | wx.EXPAND, 5)
+        bSizerMain.Add(self.treeApplyTo, 0, wx.ALL | wx.EXPAND, 5)
 
         self.m_staticText41 = wx.StaticText(
             self, wx.ID_ANY, "Reset to Default", wx.DefaultPosition, wx.DefaultSize, 0
@@ -181,11 +186,11 @@ class DlgHPCBRun_Base(wx.Dialog):
         self.Centre(wx.BOTH)
 
         # Connect Events
-        self.treeApplyTo.Bind(wx.dataview.EVT_TREELIST_ITEM_CHECKED, self.handleChecked)
+        self.treeApplyTo.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self.handleSelection)
 
     def __del__(self):
         pass
 
     # Virtual event handlers, override them in your derived class
-    def handleChecked(self, event):
+    def handleSelection(self, event):
         event.Skip()
