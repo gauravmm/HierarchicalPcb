@@ -33,7 +33,17 @@ class HierarchicalPCBPlugin(pcbnew.ActionPlugin):
         self.show_toolbar_button = True
 
     def Run(self):
-        self.RunActual()
+        with Path("C:\\Users\\User\\Desktop\\hierarchical.log").open("a") as f:
+            f.write("Running\n")
+
+            try:
+                self.RunActual()
+            except Exception as e:
+                f.write(str(e))
+                f.write(traceback.format_exc())
+                raise
+            finally:
+                f.write("Done\n")
 
     def RunActual(self):
         # grab PCB editor frame
@@ -52,7 +62,7 @@ class HierarchicalPCBPlugin(pcbnew.ActionPlugin):
         )
 
         hD = HierarchicalData(board)
-        logger.debug(hD.root_sheet)
+        logger.debug(str(hD.root_sheet))
 
         rv = DlgHPCBRun(wx_frame, hD).ShowModal()
         logger.info(rv)

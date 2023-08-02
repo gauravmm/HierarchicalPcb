@@ -114,7 +114,7 @@ class SchSheet:
 
     def __str__(self) -> str:
         # Head line with the sheet name and whether it has a PCB layout.
-        rv = [self.human_name() + (f" (+ PCB {self.pcb.path})" if self.pcb else "")]
+        rv = [self.human_name + (f" (+ PCB {self.pcb.path})" if self.pcb else "")]
         # If there are children, print them.
         for _, child in sorted(self.children.items()):
             c_str = str(child).splitlines()
@@ -128,7 +128,8 @@ class SchSheet:
 class HierarchicalData:
     def __init__(self, board: pcbnew.BOARD):
         self.board = board
-        self.root_sheet, self.pcb_rooms = get_sheet_hierarchy(board)
+        self.basedir = Path(board.GetFileName()).parent
+        self.root_sheet, self.pcb_rooms = get_sheet_hierarchy(board, self.basedir)
 
 
 def get_sheet_key_from_footprint(fp: pcbnew.FOOTPRINT) -> Optional[SchPath]:
@@ -142,7 +143,7 @@ def get_sheet_key_from_footprint(fp: pcbnew.FOOTPRINT) -> Optional[SchPath]:
 
 
 def get_sheet_hierarchy(
-    board: pcbnew.BOARD,
+    board: pcbnew.BOARD, basedir: Path
 ) -> Tuple[SchSheet, Dict[Path, PCBRoom]]:
     """Infer the sheet hierarchy from footprint data.
 
@@ -175,7 +176,7 @@ def get_sheet_hierarchy(
             if sheet_file not in pcb_rooms:
                 # If it is not known if the sheet_file does not have an associated PCB layout,
                 # then we look for one.
-                pcb_file = sheet_file.with_suffix(".kicad_pcb")
+                pcb_file = basedir / sheet_file.with_suffix(".kicad_pcb")
                 pcb_rooms[sheet_file] = PCBRoom(pcb_file) if pcb_file.exists() else None
 
             curr_sheet.pcb = pcb_rooms[sheet_file]

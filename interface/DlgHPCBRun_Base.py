@@ -46,7 +46,7 @@ class DlgHPCBRun_Base(wx.Dialog):
         bSizerMain.Add(self.m_staticText1, 0, wx.ALL, 5)
 
         self.treeApplyTo = wx.dataview.TreeListCtrl(
-            self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.dataview.TL_3STATE
+            self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.dataview.TL_SINGLE
         )
         self.treeApplyTo.SetMinSize(wx.Size(-1, 300))
 
