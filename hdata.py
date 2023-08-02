@@ -1,12 +1,13 @@
 import collections
 import dataclasses
 import logging
+import string
 from dataclasses import dataclass
 from pathlib import Path
-import string
 from typing import Dict, List, Optional, Tuple
 
 import pcbnew
+import wx
 
 logger = logging.getLogger("hierpcb")
 
@@ -66,7 +67,10 @@ class SchSheet:
         self.name: Optional[str] = None
 
         # TODO: Pointer to the PCB layout data.
-        self.pcb: Optional[PCBRoom] = False
+        self.pcb: Optional[PCBRoom] = None
+
+        # Metadata for UI rendering:
+        self.list_ref: Optional[wx.TreeListItem] = None
 
     def set_metadata(self, file: Path, name: str) -> None:
         self.file = file
