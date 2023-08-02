@@ -1,10 +1,11 @@
 import logging
 from pathlib import Path
 from typing import Any, Callable, Dict
+
 import wx
 
-from .DlgHPCBRun_Base import DlgHPCBRun_Base
 from ..hdata import HierarchicalData, SchSheet
+from .DlgHPCBRun_Base import DlgHPCBRun_Base
 
 logger = logging.getLogger("hierpcb")
 
@@ -51,28 +52,6 @@ class DlgHPCBRun(DlgHPCBRun_Base):
         # Populate the dialog with data:
         self.hD = hD
 
-        # Set up the event handlers:
-        def handle_checked(evt: wx.dataview.TreeListEvent):
-            """Handle a click on a tree item."""
-            item = evt.GetItem()
-            # Get the sheet associated with the item:
-            sheet: SchSheet = self.treeApplyTo.GetItemData(item)
-            # If the sheet is now unchecked, do nothing:
-            checked = self.treeApplyTo.IsItemChecked(item)
-
-            logger.info(f"Checked {sheet.human_name}: {checked}")
-
-            if not checked:
-                pass
-
-            elif not is_checkable(self.treeApplyTo, sheet):
-                # If the sheet is not checkable, uncheck it:
-                self.treeApplyTo.CheckItem(sheet.list_ref, wx.CHK_UNCHECKED)
-
-            else:
-                # Now we know the sheet is checkable, so we check it and uncheck all descendants:
-                set_checked_default(self.treeApplyTo, sheet, ancestor_checked=False)
-
         self.treeApplyTo.AppendColumn("Apply to")
         self.treeApplyTo.AppendColumn("sub-PCB", width=100)
         for sheet in hD.root_sheet.tree_iter(skip_root=True):
@@ -102,4 +81,27 @@ class DlgHPCBRun(DlgHPCBRun_Base):
         # Set the default state of the tree:
         set_checked_default(self.treeApplyTo, hD.root_sheet)
 
-        self.treeApplyTo.Bind(wx.dataview.EVT_TREELIST_ITEM_CHECKED, handle_checked)
+    def handleChecked(self, evt: wx.dataview.TreeListEvent):
+        """Handle a click on a tree item."""
+        item = evt.GetItem()
+        # Get the sheet associated with the item:
+        sheet: SchSheet = self.treeApplyTo.GetItemData(item)
+        # If the sheet is now unchecked, do nothing:
+        checked = self.treeApplyTo.IsItemChecked(item)
+
+        logger.info(f"Checked {sheet.human_name}: {checked}")
+
+        if not checked:
+            evt.Allow()
+
+        elif not is_checkable(self.treeApplyTo, sheet):
+            # If the sheet is not checkable, uncheck it:
+            # self.treeApplyTo.CheckItem(sheet.list_ref, wx.CHK_UNCHECKED)
+            evt.Veto()
+
+        else:
+            evt.Allow()
+            # Now we know the sheet is checkable, so we uncheck all descendants:
+            for _, child in sorted(sheet.children.items()):
+                set_checked_default(self.treeApplyTo, child, True)
+            # set_checked_default(self.treeApplyTo, sheet, ancestor_checked=False)

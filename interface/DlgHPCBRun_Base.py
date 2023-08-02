@@ -180,5 +180,12 @@ class DlgHPCBRun_Base(wx.Dialog):
 
         self.Centre(wx.BOTH)
 
+        # Connect Events
+        self.treeApplyTo.Bind(wx.dataview.EVT_TREELIST_ITEM_CHECKED, self.handleChecked)
+
     def __del__(self):
         pass
+
+    # Virtual event handlers, override them in your derived class
+    def handleChecked(self, event):
+        event.Skip()
