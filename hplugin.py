@@ -11,6 +11,7 @@ import wx
 
 from .hdata import HierarchicalData
 from .interface import DlgHPCBRun
+from .cfgman import ConfigMan
 
 logger = logging.getLogger("hierpcb")
 logger.setLevel(logging.DEBUG)
@@ -33,19 +34,6 @@ class HierarchicalPCBPlugin(pcbnew.ActionPlugin):
         self.show_toolbar_button = True
 
     def Run(self):
-        with Path("C:\\Users\\User\\Desktop\\hierarchical.log").open("a") as f:
-            f.write("Running\n")
-
-            try:
-                self.RunActual()
-            except Exception as e:
-                f.write(str(e))
-                f.write(traceback.format_exc())
-                raise
-            finally:
-                f.write("Done\n")
-
-    def RunActual(self):
         # grab PCB editor frame
         wx_frame = wx.FindWindowByName("PcbFrame")
         board = pcbnew.GetBoard()
@@ -61,8 +49,15 @@ class HierarchicalPCBPlugin(pcbnew.ActionPlugin):
             f"Plugin v{self.version} running on KiCad {pcbnew.GetBuildVersion()} and Python {sys.version} on {sys.platform}."
         )
 
-        hD = HierarchicalData(board)
-        logger.debug(str(hD.root_sheet))
+        with ConfigMan(Path(board.GetFileName() + ".hierpcb.json")) as cfg:
+            RunActual(cfg, wx_frame, board)
 
-        rv = DlgHPCBRun(wx_frame, hD).ShowModal()
-        logger.info(rv)
+
+def RunActual(cfg: ConfigMan, wx_frame: wx.Window, board: pcbnew.BOARD):
+    # grab PCB editor frame
+
+    hD = HierarchicalData(board)
+    logger.debug(str(hD.root_sheet))
+
+    rv = DlgHPCBRun(cfg, wx_frame, hD).ShowModal()
+    logger.info(rv)

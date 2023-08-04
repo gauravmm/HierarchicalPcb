@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict
 
 import wx
 
+from ..cfgman import ConfigMan
 from ..hdata import HierarchicalData, SchSheet
 from .DlgHPCBRun_Base import DlgHPCBRun_Base
 
@@ -47,7 +48,7 @@ def is_checkable(tree: wx.dataview.TreeListCtrl, sheet: SchSheet) -> bool:
 
 
 class DlgHPCBRun(DlgHPCBRun_Base):
-    def __init__(self, parent: wx.Window, hD: HierarchicalData):
+    def __init__(self, cfg: ConfigMan, parent: wx.Window, hD: HierarchicalData):
         # Set up the user interface from the designer.
         super().__init__(parent)
         # Populate the dialog with data:
