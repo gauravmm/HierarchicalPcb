@@ -24,7 +24,7 @@ class DlgHPCBRun_Base(wx.Dialog):
             id=wx.ID_ANY,
             title="HierarchicalPCB",
             pos=wx.DefaultPosition,
-            size=wx.Size(465, 788),
+            size=wx.Size(465, 766),
             style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
         )
 
@@ -59,7 +59,21 @@ class DlgHPCBRun_Base(wx.Dialog):
         )
         self.treeApplyTo.SetMinSize(wx.Size(-1, 300))
 
-        bSizerMain.Add(self.treeApplyTo, 0, wx.ALL | wx.EXPAND, 5)
+        bSizerMain.Add(self.treeApplyTo, 1, wx.ALL | wx.EXPAND, 5)
+
+        bSizer6 = wx.BoxSizer(wx.HORIZONTAL)
+
+        self.m_staticText6 = wx.StaticText(
+            self,
+            wx.ID_ANY,
+            "Double-click to change.",
+            wx.DefaultPosition,
+            wx.DefaultSize,
+            0,
+        )
+        self.m_staticText6.Wrap(-1)
+
+        bSizer6.Add(self.m_staticText6, 1, wx.ALL, 5)
 
         self.m_staticText41 = wx.StaticText(
             self, wx.ID_ANY, "Reset to Default", wx.DefaultPosition, wx.DefaultSize, 0
@@ -68,7 +82,7 @@ class DlgHPCBRun_Base(wx.Dialog):
 
         self.m_staticText41.SetFont(
             wx.Font(
-                wx.NORMAL_FONT.GetPointSize(),
+                10,
                 wx.FONTFAMILY_DEFAULT,
                 wx.FONTSTYLE_NORMAL,
                 wx.FONTWEIGHT_NORMAL,
@@ -79,11 +93,11 @@ class DlgHPCBRun_Base(wx.Dialog):
         self.m_staticText41.SetForegroundColour(
             wx.SystemSettings.GetColour(wx.SYS_COLOUR_HIGHLIGHT)
         )
-        self.m_staticText41.SetToolTip(
-            "The anchor is the component in each sub-PCB around which all others are arranged. You must set the anchor to a component with a unique prefix.\n"
-        )
+        self.m_staticText41.SetToolTip("Double-click to reset the selection.")
 
-        bSizerMain.Add(self.m_staticText41, 0, wx.ALIGN_RIGHT | wx.ALL, 5)
+        bSizer6.Add(self.m_staticText41, 0, wx.ALIGN_RIGHT | wx.ALL, 5)
+
+        bSizerMain.Add(bSizer6, 0, wx.EXPAND, 5)
 
         self.m_staticline1 = wx.StaticLine(
             self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.LI_HORIZONTAL
@@ -102,29 +116,12 @@ class DlgHPCBRun_Base(wx.Dialog):
 
         bSizerMain.Add(self.m_staticText2, 0, wx.ALL, 5)
 
-        self.m_scrolledWindowApplyTo1 = wx.ScrolledWindow(
-            self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.VSCROLL
+        self.subPCBList = wx.dataview.DataViewListCtrl(
+            self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, 0
         )
-        self.m_scrolledWindowApplyTo1.SetScrollRate(5, 5)
-        self.m_scrolledWindowApplyTo1.SetMinSize(wx.Size(-1, 200))
+        self.subPCBList.SetMinSize(wx.Size(-1, 200))
 
-        bSizer31 = wx.BoxSizer(wx.VERTICAL)
-
-        self.m_dataViewListCtrl1 = wx.dataview.DataViewListCtrl(
-            self.m_scrolledWindowApplyTo1,
-            wx.ID_ANY,
-            wx.DefaultPosition,
-            wx.DefaultSize,
-            0,
-        )
-        self.m_dataViewListCtrl1.SetMinSize(wx.Size(-1, 200))
-
-        bSizer31.Add(self.m_dataViewListCtrl1, 1, wx.EXPAND, 5)
-
-        self.m_scrolledWindowApplyTo1.SetSizer(bSizer31)
-        self.m_scrolledWindowApplyTo1.Layout()
-        bSizer31.Fit(self.m_scrolledWindowApplyTo1)
-        bSizerMain.Add(self.m_scrolledWindowApplyTo1, 1, wx.EXPAND, 5)
+        bSizerMain.Add(self.subPCBList, 1, wx.EXPAND, 5)
 
         bSizer4 = wx.BoxSizer(wx.HORIZONTAL)
 
@@ -147,7 +144,7 @@ class DlgHPCBRun_Base(wx.Dialog):
 
         self.m_staticText4.SetFont(
             wx.Font(
-                wx.NORMAL_FONT.GetPointSize(),
+                10,
                 wx.FONTFAMILY_DEFAULT,
                 wx.FONTSTYLE_NORMAL,
                 wx.FONTWEIGHT_NORMAL,
@@ -187,10 +184,14 @@ class DlgHPCBRun_Base(wx.Dialog):
 
         # Connect Events
         self.treeApplyTo.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self.handleSelection)
+        self.m_staticText41.Bind(wx.EVT_LEFT_DCLICK, self.resetToDefault)
 
     def __del__(self):
         pass
 
     # Virtual event handlers, override them in your derived class
     def handleSelection(self, event):
+        event.Skip()
+
+    def resetToDefault(self, event):
         event.Skip()

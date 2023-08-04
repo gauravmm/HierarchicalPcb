@@ -78,6 +78,14 @@ class DlgHPCBRun(DlgHPCBRun_Base):
         # Set the default state of the tree:
         set_checked_default(self.treeApplyTo, hD.root_sheet)
 
+        # Populate the list of available sub-PCBs:
+        self.subPCBList.AppendTextColumn("Name")
+        self.subPCBList.AppendTextColumn("Anchor Footprint")
+        for _, subpcb in sorted(hD.pcb_rooms.items()):
+            self.subPCBList.AppendItem(
+                [subpcb.path.name, subpcb.get_heuristic_anchor_ref()]
+            )
+
     def handleSelection(self, evt: wx.dataview.TreeListEvent):
         """Handle a click on a tree item."""
         item = evt.GetItem()
@@ -85,20 +93,14 @@ class DlgHPCBRun(DlgHPCBRun_Base):
         sheet: SchSheet = self.treeApplyTo.GetItemData(item)
         # If the sheet is now unchecked, do nothing:
 
-        logger.info(f"Checked {sheet.human_name}: {sheet.checked}")
+        if is_checkable(self.treeApplyTo, sheet):
+            if sheet.checked:
+                sheet.checked = False
+                self.treeApplyTo.SetItemBold(sheet.list_ref, sheet.checked)
+            else:
+                # Check it and uncheck all descendants:
+                set_checked_default(self.treeApplyTo, sheet)
 
-        if sheet.checked:
-            logger.info(f"Case A")
-            sheet.checked = False
-            self.treeApplyTo.SetItemBold(sheet.list_ref, sheet.checked)
-
-        elif is_checkable(self.treeApplyTo, sheet):
-            # Now we know the sheet is checkable, so we check it and uncheck all descendants:
-            logger.info(f"Case B")
-            set_checked_default(self.treeApplyTo, sheet)
-
-        else:
-            # If the sheet is not checkable, uncheck it:
-            # self.treeApplyTo.CheckItem(sheet.list_ref, wx.CHK_UNCHECKED)
-            logger.info(f"Case C")
-            pass
+    def resetToDefault(self, event):
+        """Reset the tree to its default state."""
+        set_checked_default(self.treeApplyTo, self.hD.root_sheet)

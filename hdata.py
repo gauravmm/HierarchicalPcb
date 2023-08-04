@@ -32,6 +32,26 @@ class PCBRoom:
             f"{len(self.subboard.GetDrawings())} drawings."
         )
 
+    def get_heuristic_anchor_ref(self) -> str:
+        """Guess the reference prefix of the footprint that will be used as an anchor."""
+        prefixes = collections.defaultdict(lambda: 0)
+
+        def prefix(s: str) -> str:
+            return s.rstrip(string.digits)
+
+        fps = []
+        for fp in self.subboard.GetFootprints():
+            prefixes[prefix(fp.GetReference())] += 1
+            fps.append(fp)
+
+        heuristic_list = []
+        for fp in fps:
+            ref = fp.GetReference()
+            heuristic_list.append((-fp.GetArea(), prefixes[prefix(ref)], ref))
+
+        _, _, min_ref = min(heuristic_list)
+        return min_ref
+
     def get_anchor_refs(self) -> Dict[FootprintID, str]:
         """Get the reference prefixes of the footprints that can be used as anchors."""
         rv = {}
