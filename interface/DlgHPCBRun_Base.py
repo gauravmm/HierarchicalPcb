@@ -185,6 +185,10 @@ class DlgHPCBRun_Base(wx.Dialog):
         # Connect Events
         self.treeApplyTo.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self.handleSelection)
         self.m_staticText41.Bind(wx.EVT_LEFT_DCLICK, self.resetToDefault)
+        self.subPCBList.Bind(
+            wx.dataview.EVT_DATAVIEW_ITEM_ACTIVATED, self.changeAnchor, id=wx.ID_ANY
+        )
+        self.m_sdbSizer1Apply.Bind(wx.EVT_BUTTON, self.handleApply)
 
     def __del__(self):
         pass
@@ -194,4 +198,10 @@ class DlgHPCBRun_Base(wx.Dialog):
         event.Skip()
 
     def resetToDefault(self, event):
+        event.Skip()
+
+    def changeAnchor(self, event):
+        event.Skip()
+
+    def handleApply(self, event):
         event.Skip()

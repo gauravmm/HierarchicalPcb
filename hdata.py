@@ -5,6 +5,7 @@ import string
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+from .cfgman import ConfigMan
 
 import pcbnew
 import wx
@@ -32,7 +33,22 @@ class PCBRoom:
             f"{len(self.subboard.GetDrawings())} drawings."
         )
 
-    def get_heuristic_anchor_ref(self) -> str:
+        self.selected_anchor: Optional[wx.FOOTPRINT] = None
+
+    def get_anchor_ref(self) -> Optional[str]:
+        if self.selected_anchor is None:
+            return None
+        return self.selected_anchor.GetReference()
+
+    def set_anchor_ref(self, ref: str):
+        # Find the footprint with the given reference:
+        for fp in self.subboard.GetFootprints():
+            if fp.GetReference() == ref:
+                self.selected_anchor = fp
+                return
+        logger.warning(f"Could not find footprint {ref} in board {self.path}.")
+
+    def get_heuristic_anchor_ref(self) -> Optional[str]:
         """Guess the reference prefix of the footprint that will be used as an anchor."""
         prefixes = collections.defaultdict(lambda: 0)
 
@@ -121,6 +137,28 @@ class SchSheet:
         for _, child in sorted(self.children.items()):
             yield from child.tree_iter()
 
+    def set_checked_default(self, ancestor_checked: bool = False):
+        """Set the tree to its default state recursively."""
+        self.checked = False
+        # Check if the sheet has a PCB:
+        if self.pcb and self.pcb.is_legal:
+            # If an ancestor is checked, this sheet cannot be checked.
+            # Otherwise, this is the first sheet from the root to be elligible,
+            if not ancestor_checked:
+                self.checked = True
+
+        # Recur on the children:
+        for child in self.children.values():
+            child.set_checked_default(child, self.checked or ancestor_checked)
+
+    def cleanup_checked(self, ancestor_checked: bool = False):
+        """Make sure that there are no paths from the root that include more than one checked sheet."""
+        if ancestor_checked:
+            self.checked = False
+        # Recur on the children:
+        for child in self.children.values():
+            child.set_checked_default(child, self.checked or ancestor_checked)
+
     @property
     def identifier(self) -> str:
         if self.parent is None:
@@ -155,6 +193,28 @@ class HierarchicalData:
         self.board = board
         self.basedir = Path(board.GetFileName()).parent
         self.root_sheet, self.pcb_rooms = get_sheet_hierarchy(board, self.basedir)
+
+    def load(self, cfg: ConfigMan):
+        # Load the PCB rooms:
+        for subpcb in self.pcb_rooms.values():
+            anchor = cfg.get(
+                "subpcb",
+                str(subpcb.path),
+                "anchor",
+                default=subpcb.get_heuristic_anchor_ref(),
+            )
+            subpcb.set_anchor_ref(anchor)
+
+        for sheet in self.root_sheet.tree_iter():
+            sheet.checked = cfg.get("sheet", sheet.identifier, "checked", default=False)
+        sheet.cleanup_checked()
+
+    def save(self, cfg: ConfigMan):
+        # Save the current state:
+        for subpcb in self.pcb_rooms.values():
+            cfg.set("subpcb", str(subpcb.path), "anchor", value=subpcb.get_anchor_ref())
+        for sheet in self.root_sheet.tree_iter():
+            cfg.set("sheet", sheet.identifier, "checked", value=sheet.checked)
 
 
 def get_sheet_key_from_footprint(fp: pcbnew.FOOTPRINT) -> Optional[SchPath]:

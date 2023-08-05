@@ -5,7 +5,8 @@ from typing import Any, Callable, Dict
 import wx
 
 from ..cfgman import ConfigMan
-from ..hdata import HierarchicalData, SchSheet
+from ..hdata import HierarchicalData, PCBRoom, SchSheet
+from .DlgPickAnchor import DlgPickAnchor
 from .DlgHPCBRun_Base import DlgHPCBRun_Base
 
 logger = logging.getLogger("hierpcb")
@@ -31,6 +32,16 @@ def set_checked_default(
     # Recur on the children:
     for _, child in sorted(sheet.children.items()):
         set_checked_default(tree, child, sheet.checked or ancestor_checked)
+
+
+def apply_checked(tree: wx.dataview.TreeListCtrl, sheet: SchSheet):
+    """Mutate the tree to reflect the checked state of the sheets."""
+    # Skip nodes that don't have list refs:
+    if sheet.list_ref:
+        tree.SetItemBold(sheet.list_ref, sheet.checked)
+    # Recur on the children:
+    for _, child in sorted(sheet.children.items()):
+        apply_checked(tree, child)
 
 
 def is_checkable(tree: wx.dataview.TreeListCtrl, sheet: SchSheet) -> bool:
@@ -77,15 +88,16 @@ class DlgHPCBRun(DlgHPCBRun_Base):
         self.treeApplyTo.ExpandAll()
 
         # Set the default state of the tree:
-        set_checked_default(self.treeApplyTo, hD.root_sheet)
+        # TODO: Mutate the tree structure and
+        # set_checked_default(self.treeApplyTo, hD.root_sheet)
+        apply_checked(self.treeApplyTo, hD.root_sheet)
 
         # Populate the list of available sub-PCBs:
         self.subPCBList.AppendTextColumn("Name")
         self.subPCBList.AppendTextColumn("Anchor Footprint")
-        for _, subpcb in sorted(hD.pcb_rooms.items()):
-            self.subPCBList.AppendItem(
-                [subpcb.path.name, subpcb.get_heuristic_anchor_ref()]
-            )
+        self.pcb_rooms_lookup = [subpcb for _, subpcb in sorted(hD.pcb_rooms.items())]
+        for subpcb in self.pcb_rooms_lookup:
+            self.subPCBList.AppendItem([subpcb.path.name, subpcb.get_anchor_ref()])
 
     def handleSelection(self, evt: wx.dataview.TreeListEvent):
         """Handle a click on a tree item."""
@@ -105,3 +117,36 @@ class DlgHPCBRun(DlgHPCBRun_Base):
     def resetToDefault(self, event):
         """Reset the tree to its default state."""
         set_checked_default(self.treeApplyTo, self.hD.root_sheet)
+
+    def changeAnchor(self, event):
+        """Change the anchor footprint of the selected sub-PCB."""
+        # Get the selected sub-PCB:
+        selRow = self.subPCBList.GetSelectedRow()
+        if selRow == wx.NOT_FOUND:
+            return event.Skip()
+        # Get the sub-PCB:
+        subpcb: PCBRoom = self.pcb_rooms_lookup[selRow]
+
+        # If the current selection is "None", set it to None:
+        curr_sel = self.subPCBList.GetCellValue(selRow, 1)
+        if curr_sel == "None":
+            curr_sel = None
+
+        # Show the footprint selection dialog:
+        dlg = DlgPickAnchor(
+            self,
+            subpcb.get_anchor_refs(),
+            curr_sel or subpcb.get_heuristic_anchor_ref(),
+        )
+        if dlg.ShowModal() == wx.ID_OK and dlg.selection is not None:
+            # Set the anchor:
+            subpcb.set_selected_anchor_ref(dlg.selection)
+            # Update the display:
+            self.subPCBList.SetCellValue(
+                self.subPCBList.GetFirstSelected(), 1, subpcb.get_heuristic_anchor_ref()
+            )
+
+    def handleApply(self, event):
+        """Submit the form."""
+        # Mutate the tree structure and
+        self.EndModal(wx.ID_OK)

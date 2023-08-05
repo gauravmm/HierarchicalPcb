@@ -54,10 +54,10 @@ class HierarchicalPCBPlugin(pcbnew.ActionPlugin):
 
 
 def RunActual(cfg: ConfigMan, wx_frame: wx.Window, board: pcbnew.BOARD):
-    # grab PCB editor frame
-
     hD = HierarchicalData(board)
     logger.debug(str(hD.root_sheet))
+    hD.load(cfg)  # Load defaults
 
-    rv = DlgHPCBRun(cfg, wx_frame, hD).ShowModal()
-    logger.info(rv)
+    if DlgHPCBRun(cfg, wx_frame, hD).ShowModal() == wx.ID_OK:
+        hD.save(cfg)
+        logger.info("Saved.")

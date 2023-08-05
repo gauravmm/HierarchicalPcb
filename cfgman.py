@@ -23,7 +23,7 @@ class ConfigMan(contextlib.AbstractContextManager):
 
     def __exit__(self, *args):
         with self.path.open("w") as fp:
-            json.dump(self.config, fp)
+            json.dump(self.config, fp, indent=2)
         return super().__exit__(*args)
 
     def get(self, *key: str, default=None):
@@ -34,13 +34,17 @@ class ConfigMan(contextlib.AbstractContextManager):
                 return default
         return node
 
-    def set(self, *key: str, value):
+    def set(self, *key: str, value, create_missing=True):
         node = self.config
         terminal = key[-1]
         prefix = []
         for k in key[:-1]:
             prefix.append(k)
-            node = node.get(k)
-            if node is None:
-                raise KeyError(f"Key {'.'.join(prefix)} not found in config.")
+            node_next = node.get(k)
+            if node_next is None:
+                if create_missing:
+                    node[k] = node_next = {}
+                else:
+                    raise KeyError(f"Key {'.'.join(prefix)} not found in config.")
+            node = node_next
         node[terminal] = value
