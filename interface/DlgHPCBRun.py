@@ -122,23 +122,24 @@ class DlgHPCBRun(DlgHPCBRun_Base):
         """Change the anchor footprint of the selected sub-PCB."""
         # Get the selected sub-PCB:
         selRow = self.subPCBList.GetSelectedRow()
+        logger.info(f"Changing anchor footprint for {selRow}.")
         if selRow == wx.NOT_FOUND:
             return event.Skip()
         # Get the sub-PCB:
         subpcb: PCBRoom = self.pcb_rooms_lookup[selRow]
-
-        # If the current selection is "None", set it to None:
-        curr_sel = self.subPCBList.GetCellValue(selRow, 1)
-        if curr_sel == "None":
-            curr_sel = None
+        logger.info(f"Which is {subpcb.path}.")
 
         # Show the footprint selection dialog:
         dlg = DlgPickAnchor(
             self,
             subpcb.get_anchor_refs(),
-            curr_sel or subpcb.get_heuristic_anchor_ref(),
+            subpcb.get_anchor_ref() or subpcb.get_heuristic_anchor_ref(),
         )
-        if dlg.ShowModal() == wx.ID_OK and dlg.selection is not None:
+        logger.info("WTF")
+        # mode = dlg.ShowModal()
+        logger.info("WTF2")
+
+        if mode == wx.ID_OK and dlg.selection is not None:
             # Set the anchor:
             subpcb.set_selected_anchor_ref(dlg.selection)
             # Update the display:

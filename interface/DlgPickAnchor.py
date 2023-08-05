@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional
 
 import wx
 import pcbnew
@@ -16,7 +16,7 @@ class DlgPickAnchor(DlgPickAnchor_Base):
     def __init__(
         self,
         parent: wx.Window,
-        options: List[pcbnew.FOOTPRINT],
+        options: Iterable[pcbnew.FOOTPRINT],
         selected: Optional[str],
     ):
         # Set up the user interface from the designer.

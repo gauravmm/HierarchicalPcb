@@ -459,6 +459,7 @@
                         <property name="window_extra_style"></property>
                         <property name="window_name"></property>
                         <property name="window_style"></property>
+                        <event name="OnDataViewListCtrlItemActivated">changeAnchor</event>
                     </object>
                 </object>
                 <object class="sizeritem" expanded="0">
@@ -725,6 +726,7 @@
                         <property name="minimum_size"></property>
                         <property name="name">m_sdbSizer1</property>
                         <property name="permission">protected</property>
+                        <event name="OnApplyButtonClick">handleApply</event>
                     </object>
                 </object>
             </object>
@@ -786,6 +788,7 @@
                         <property name="window_extra_style"></property>
                         <property name="window_name"></property>
                         <property name="window_style"></property>
+                        <event name="OnDataViewListCtrlSelectionChanged">selectionChanged</event>
                         <event name="OnLeftDClick">submitForm</event>
                     </object>
                 </object>
@@ -805,8 +808,6 @@
                         <property name="minimum_size"></property>
                         <property name="name">m_sdbSizer2</property>
                         <property name="permission">protected</property>
-                        <event name="OnCancelButtonClick">cancelForm</event>
-                        <event name="OnOKButtonClick">submitForm</event>
                     </object>
                 </object>
             </object>
