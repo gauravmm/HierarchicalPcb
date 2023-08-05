@@ -69,19 +69,31 @@ class PCBRoom:
         return min_ref
 
     def get_anchor_refs(self) -> Dict[FootprintID, str]:
-        """Get the reference prefixes of the footprints that can be used as anchors."""
+        """Get the references of the footprints that can be used as anchors."""
         rv = {}
         for fp in self.subboard.GetFootprints():
-            fid = fp.GetPath().AsString().split("/")[-1]
-            rv[fid] = fp.GetReference()
+            path = fp.GetPath().AsString()
+            if path is None or path == "":
+                logger.warn(f"Missing path: {fp.GetReference()} ({self.path})")
+                continue
+            rv[path] = fp.GetReference()
 
         return rv
+
+    def __str__(self) -> str:
+        # Head line with the sheet name and whether it has a PCB layout.
+        rv = [f"PCB {self.path}"]
+        for k, v in self.get_anchor_refs().items():
+            ksumm = "/".join(k[:8] for k in k.split("/"))
+            rv.append(f"  {ksumm}: {v}")
+
+        return "\n".join(rv)
 
     @property
     def is_legal(self) -> bool:
         """Check if the room can be handled by our engine."""
         # For a room to be legal, there must be at least one footprint. That's it.
-        return len(self.subboard.GetFootprints()) > 0
+        return len(self.get_anchor_refs()) > 0
 
 
 class SchSheet:

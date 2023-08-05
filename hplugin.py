@@ -56,6 +56,8 @@ class HierarchicalPCBPlugin(pcbnew.ActionPlugin):
 def RunActual(cfg: ConfigMan, wx_frame: wx.Window, board: pcbnew.BOARD):
     hD = HierarchicalData(board)
     logger.debug(str(hD.root_sheet))
+    for room in hD.pcb_rooms.values():
+        logger.debug(str(room))
     hD.load(cfg)  # Load defaults
 
     if DlgHPCBRun(cfg, wx_frame, hD).ShowModal() == wx.ID_OK:

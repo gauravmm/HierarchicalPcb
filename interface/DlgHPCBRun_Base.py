@@ -123,22 +123,24 @@ class DlgHPCBRun_Base(wx.Dialog):
 
         bSizerMain.Add(self.subPCBList, 1, wx.EXPAND, 5)
 
-        bSizer4 = wx.BoxSizer(wx.HORIZONTAL)
+        bSizer8 = wx.BoxSizer(wx.HORIZONTAL)
 
-        self.m_panel2 = wx.Panel(
-            self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.TAB_TRAVERSAL
+        self.m_staticText7 = wx.StaticText(
+            self, wx.ID_ANY, "Change anchor:", wx.DefaultPosition, wx.DefaultSize, 0
         )
-        bSizer4.Add(self.m_panel2, 1, wx.EXPAND | wx.ALL, 5)
+        self.m_staticText7.Wrap(-1)
 
-        self.m_staticText5 = wx.StaticText(
-            self, wx.ID_ANY, "Help:", wx.DefaultPosition, wx.DefaultSize, 0
+        bSizer8.Add(self.m_staticText7, 0, wx.ALL, 5)
+
+        anchorChoiceChoices = []
+        self.anchorChoice = wx.Choice(
+            self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, anchorChoiceChoices, 0
         )
-        self.m_staticText5.Wrap(-1)
-
-        bSizer4.Add(self.m_staticText5, 0, wx.ALL, 5)
+        self.anchorChoice.SetSelection(0)
+        bSizer8.Add(self.anchorChoice, 1, wx.ALL | wx.EXPAND, 5)
 
         self.m_staticText4 = wx.StaticText(
-            self, wx.ID_ANY, "Anchors", wx.DefaultPosition, wx.DefaultSize, 0
+            self, wx.ID_ANY, "Help", wx.DefaultPosition, wx.DefaultSize, 0
         )
         self.m_staticText4.Wrap(-1)
 
@@ -159,9 +161,9 @@ class DlgHPCBRun_Base(wx.Dialog):
             "The anchor is the component in each sub-PCB around which all others are arranged."
         )
 
-        bSizer4.Add(self.m_staticText4, 0, wx.ALL, 5)
+        bSizer8.Add(self.m_staticText4, 0, wx.ALL, 5)
 
-        bSizerMain.Add(bSizer4, 0, wx.EXPAND, 5)
+        bSizerMain.Add(bSizer8, 0, wx.EXPAND, 5)
 
         self.m_staticline2 = wx.StaticLine(
             self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.LI_HORIZONTAL
@@ -186,8 +188,16 @@ class DlgHPCBRun_Base(wx.Dialog):
         self.treeApplyTo.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self.handleSelection)
         self.m_staticText41.Bind(wx.EVT_LEFT_DCLICK, self.resetToDefault)
         self.subPCBList.Bind(
-            wx.dataview.EVT_DATAVIEW_ITEM_ACTIVATED, self.changeAnchor, id=wx.ID_ANY
+            wx.dataview.EVT_DATAVIEW_ITEM_ACTIVATED,
+            self.expandAnchorSelection,
+            id=wx.ID_ANY,
         )
+        self.subPCBList.Bind(
+            wx.dataview.EVT_DATAVIEW_SELECTION_CHANGED,
+            self.changeSelectedSubPCB,
+            id=wx.ID_ANY,
+        )
+        self.anchorChoice.Bind(wx.EVT_CHOICE, self.changeAnchor)
         self.m_sdbSizer1Apply.Bind(wx.EVT_BUTTON, self.handleApply)
 
     def __del__(self):
@@ -198,6 +208,12 @@ class DlgHPCBRun_Base(wx.Dialog):
         event.Skip()
 
     def resetToDefault(self, event):
+        event.Skip()
+
+    def expandAnchorSelection(self, event):
+        event.Skip()
+
+    def changeSelectedSubPCB(self, event):
         event.Skip()
 
     def changeAnchor(self, event):

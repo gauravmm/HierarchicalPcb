@@ -1,12 +1,11 @@
 import logging
 from pathlib import Path
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Optional
 
 import wx
 
 from ..cfgman import ConfigMan
 from ..hdata import HierarchicalData, PCBRoom, SchSheet
-from .DlgPickAnchor import DlgPickAnchor
 from .DlgHPCBRun_Base import DlgHPCBRun_Base
 
 logger = logging.getLogger("hierpcb")
@@ -118,34 +117,48 @@ class DlgHPCBRun(DlgHPCBRun_Base):
         """Reset the tree to its default state."""
         set_checked_default(self.treeApplyTo, self.hD.root_sheet)
 
-    def changeAnchor(self, event):
-        """Change the anchor footprint of the selected sub-PCB."""
-        # Get the selected sub-PCB:
+    def getSelectedSubPCB(self) -> Optional[PCBRoom]:
         selRow = self.subPCBList.GetSelectedRow()
-        logger.info(f"Changing anchor footprint for {selRow}.")
-        if selRow == wx.NOT_FOUND:
-            return event.Skip()
-        # Get the sub-PCB:
-        subpcb: PCBRoom = self.pcb_rooms_lookup[selRow]
-        logger.info(f"Which is {subpcb.path}.")
+        try:
+            subpcb: PCBRoom = self.pcb_rooms_lookup[selRow]
+            logger.info(f"Selected for {selRow} : {subpcb.path}")
+            return subpcb
+        except IndexError:
+            logger.info(f"Invalid index: {selRow}")
+            return None
 
-        # Show the footprint selection dialog:
-        dlg = DlgPickAnchor(
-            self,
-            subpcb.get_anchor_refs(),
-            subpcb.get_anchor_ref() or subpcb.get_heuristic_anchor_ref(),
+    def changeSelectedSubPCB(self, event):
+        """Update the choices of anchors for the selected sub-PCB."""
+        # Get the selected sub-PCB:
+        subpcb = self.getSelectedSubPCB()
+        if subpcb is None:
+            return
+
+        # Get the current selection
+        curr = subpcb.get_anchor_ref() or subpcb.get_heuristic_anchor_ref()
+        # Get the list of available anchors:
+        anchors = sorted(subpcb.get_anchor_refs().values())
+        logger.info(f"Anchors  ({curr}): {anchors}")
+        self.anchorChoice.Clear()
+        self.anchorChoice.AppendItems(anchors)
+        # Select the current anchor:
+        self.anchorChoice.SetSelection(anchors.index(curr))
+
+    def changeAnchor(self, event):
+        # Set the anchor:
+        subpcb = self.getSelectedSubPCB()
+        if subpcb is None:
+            return
+
+        # Get the selected anchor:
+        sel = self.anchorChoice.GetSelection()
+        logger.info(f"Anchor {sel} for {subpcb.path}")
+
+        subpcb.set_selected_anchor_ref(sel)
+        # Update the display:
+        self.subPCBList.SetCellValue(
+            self.subPCBList.GetFirstSelected(), 1, subpcb.get_heuristic_anchor_ref()
         )
-        logger.info("WTF")
-        # mode = dlg.ShowModal()
-        logger.info("WTF2")
-
-        if mode == wx.ID_OK and dlg.selection is not None:
-            # Set the anchor:
-            subpcb.set_selected_anchor_ref(dlg.selection)
-            # Update the display:
-            self.subPCBList.SetCellValue(
-                self.subPCBList.GetFirstSelected(), 1, subpcb.get_heuristic_anchor_ref()
-            )
 
     def handleApply(self, event):
         """Submit the form."""
