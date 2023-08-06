@@ -137,12 +137,12 @@ class DlgHPCBRun(DlgHPCBRun_Base):
         # Get the current selection
         curr = subpcb.get_anchor_ref() or subpcb.get_heuristic_anchor_ref()
         # Get the list of available anchors:
-        anchors = sorted(subpcb.get_anchor_refs().values())
-        logger.info(f"Anchors  ({curr}): {anchors}")
+        self.anchors = sorted(subpcb.get_anchor_refs().values())
+        logger.info(f"Anchors  ({curr}): {self.anchors}")
         self.anchorChoice.Clear()
-        self.anchorChoice.AppendItems(anchors)
+        self.anchorChoice.AppendItems(self.anchors)
         # Select the current anchor:
-        self.anchorChoice.SetSelection(anchors.index(curr))
+        self.anchorChoice.SetSelection(self.anchors.index(curr))
 
     def changeAnchor(self, event):
         # Set the anchor:
@@ -153,12 +153,14 @@ class DlgHPCBRun(DlgHPCBRun_Base):
         # Get the selected anchor:
         sel = self.anchorChoice.GetSelection()
         logger.info(f"Anchor {sel} for {subpcb.path}")
+        if sel == wx.NOT_FOUND:
+            logger.warning("No anchor selected!")
+            return
 
-        subpcb.set_selected_anchor_ref(sel)
+        sel_ref = self.anchors[sel]
+        subpcb.set_anchor_ref(sel_ref)
         # Update the display:
-        self.subPCBList.SetCellValue(
-            self.subPCBList.GetFirstSelected(), 1, subpcb.get_heuristic_anchor_ref()
-        )
+        self.subPCBList.SetTextValue(sel_ref, self.subPCBList.GetSelectedRow(), 1)
 
     def handleApply(self, event):
         """Submit the form."""

@@ -211,7 +211,7 @@ class HierarchicalData:
         for subpcb in self.pcb_rooms.values():
             anchor = cfg.get(
                 "subpcb",
-                str(subpcb.path),
+                str(subpcb.path.relative_to(self.basedir)),
                 "anchor",
                 default=subpcb.get_heuristic_anchor_ref(),
             )
@@ -223,8 +223,15 @@ class HierarchicalData:
 
     def save(self, cfg: ConfigMan):
         # Save the current state:
+        cfg.clear("subpcb")
         for subpcb in self.pcb_rooms.values():
-            cfg.set("subpcb", str(subpcb.path), "anchor", value=subpcb.get_anchor_ref())
+            cfg.set(
+                "subpcb",
+                str(subpcb.path.relative_to(self.basedir)),
+                "anchor",
+                value=subpcb.get_anchor_ref(),
+            )
+        cfg.clear("sheet")
         for sheet in self.root_sheet.tree_iter():
             cfg.set("sheet", sheet.identifier, "checked", value=sheet.checked)
 

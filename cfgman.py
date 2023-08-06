@@ -34,6 +34,14 @@ class ConfigMan(contextlib.AbstractContextManager):
                 return default
         return node
 
+    def clear(self, *key: str):
+        node = self.config
+        for k in key[:-1]:
+            node = node.get(k)
+            if node is None:
+                return
+        node.pop(key[-1], None)
+
     def set(self, *key: str, value, create_missing=True):
         node = self.config
         terminal = key[-1]
