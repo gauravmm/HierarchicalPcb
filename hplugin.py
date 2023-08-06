@@ -9,9 +9,10 @@ from pathlib import Path
 import pcbnew
 import wx
 
+from .cfgman import ConfigMan
 from .hdata import HierarchicalData
 from .interface import DlgHPCBRun
-from .cfgman import ConfigMan
+from .placement import enforce_position
 
 logger = logging.getLogger("hierpcb")
 logger.setLevel(logging.DEBUG)
@@ -61,5 +62,7 @@ def RunActual(cfg: ConfigMan, wx_frame: wx.Window, board: pcbnew.BOARD):
     hD.load(cfg)  # Load defaults
 
     if DlgHPCBRun(cfg, wx_frame, hD).ShowModal() == wx.ID_OK:
+        enforce_position(hD, board)
+
         hD.save(cfg)
         logger.info("Saved.")
