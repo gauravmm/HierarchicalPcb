@@ -184,8 +184,8 @@ class SchSheet:
     @property
     def human_path(self) -> str:
         if self.parent is None:
-            return self.human_name()
-        return self.parent.human_name() + "/" + self.human_name()
+            return self.human_name
+        return self.parent.human_path + "/" + self.human_name
 
     def __str__(self) -> str:
         # Head line with the sheet name and whether it has a PCB layout.

@@ -22,6 +22,22 @@ In summary:
 
 The algorithm works as follows:
 
+1. For each selected hierarchical sheet, find the sub-PCB file and load it.
+2. Match the anchor footprint in the sub-PCB to the anchor footprint in the main PCB.
+   a. Copy the _copied properties_ of the anchor footprint from the sub-PCB to the main PCB:
+   b. Move the anchor footprint in the main PCB into an automatically-named group (or create it if it doesn't exist).
+3. For each footprint in the sub-PCB, find the corresponding footprint in the main PCB.
+   a. Match the footprint by internal ID, not the reference designator.
+   b. Copy the _copied properties_.
+   c. Place and rotate the main footprint w.r.t. the main anchor so that it matches the sub-PCB.
+4. For all traces in the sub-PCB:
+   a. Clear the traces in the main PCB in the same group as the anchor.
+   b. Recreate all traces.
+
+The _copied properties_ are:
+
+- Layer assignment (i.e. is it "flipped")
+
 ### Notes
 
 Note that HierarchicalPCB will explore the entire tree and, along each path, enforce only the topmost sub-PCB level. For example, if sheet `T` contains `A` and `B`, and `B` contains `A` as a sub-sheet (and sub-sheets `A` and `B` both have associated sub-PCBs), then HierarchicalPCB will enforce the layout of `B` on components inside `B`, even if the components included from `A` by `B` have a different layout from `A`.
