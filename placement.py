@@ -137,7 +137,9 @@ class PositionTransform:
             # Move the text:
             new_pos, new_rot = self.abstract(src.GetPosition(), src.GetTextAngle())
             dst.SetPosition(new_pos)
-            dst.SetTextAngle(new_rot)
+            # The rotation stacks with the rotation of the footprint, so we don't need to
+            # set the rotation here. TODO: Check this with a bunch of rotations.
+            # dst.SetTextAngle(new_rot)
 
         elif type(src) == pcbnew.FP_TEXT:
             # We have a source but no destination. We should eventually add support for
@@ -156,8 +158,40 @@ class PositionTransform:
 
 
 class GroupManager:
-    def __init__(self) -> None:
-        pass
+    def __init__(self, board: pcbnew.BOARD) -> None:
+        self.board: pcbnew.board = board
+        self.groups: Dict[str, pcbnew.PCB_GROUP] = {
+            g.GetName(): g for g in board.Groups()
+        }
+
+    def create_or_get(self, group_name: str) -> pcbnew.PCB_GROUP:
+        """Get a group by name, creating it if it doesn't exist."""
+        group = self.groups.get(group_name)
+        if group is None:
+            group = pcbnew.PCB_GROUP(None)
+            group.SetName(group_name)
+            self.board.Add(group)
+            self.groups[group_name] = group
+        return group
+
+    def move(self, item: pcbnew.BOARD_ITEM, group: Optional[pcbnew.PCB_GROUP]) -> bool:
+        """Force an item to be in a group., returning True if the item was moved."""
+        if group is None:
+            return False
+        moved = False
+
+        # First, check if the footprint is already in the group:
+        parent_group = item.GetParentGroup()
+        # If the footprint is not already in the group, remove it from the current group:
+        if parent_group and parent_group.GetName() != group.GetName():
+            moved = True
+            parent_group.RemoveItem(item)
+            parent_group = None
+        # If the footprint is not in any group, or was in the wrong group, add it to the right one:
+        if parent_group is None:
+            group.AddItem(item)
+
+        return moved
 
 
 def enforce_position(hd: HierarchicalData, board: pcbnew.BOARD):
@@ -168,6 +202,7 @@ def enforce_position(hd: HierarchicalData, board: pcbnew.BOARD):
     fp_lookup = {fp.GetPath().AsString(): fp for fp in board.GetFootprints()}
 
     errors: List[ReportedError] = []
+    groupman: GroupManager = GroupManager(board)
 
     for sheet in hd.root_sheet.tree_iter():
         if sheet.pcb and sheet.checked:
@@ -207,9 +242,8 @@ def enforce_position(hd: HierarchicalData, board: pcbnew.BOARD):
             # we automatically create a group for the anchor footprint if it doesn't exist and
             # move all the footprints into it.
             group_name = f"subpcb_{sheet.human_path}"
-            group = anchor_target.GetParentGroup()
-            # Check if the anchor footprint is in the right group:
-            if group and group.GetName() != group_name:
+            group = groupman.create_or_get(group_name)
+            if groupman.move(anchor_target, group):
                 errors.append(
                     ReportedError(
                         "anchor footprint is in the wrong group",
@@ -218,30 +252,26 @@ def enforce_position(hd: HierarchicalData, board: pcbnew.BOARD):
                         level=ErrorLevel.ERROR,
                     )
                 )
-                # Remove anchor_target from the group:
-                group.RemoveItem(anchor_target)
-                group = None  # Force the group to be recreated.
-
-            if group is None:
-                group = pcbnew.PCB_GROUP(None)
-                group.SetName(group_name)
-                board.Add(group)
 
             # Compute the transform for later use:
             transform = PositionTransform(anchor_subpcb, anchor_target)
 
             # First, move the footprints:
             err_footprints = enforce_position_footprints(
-                sheet, transform, fp_lookup, group
+                sheet, transform, fp_lookup, groupman, group
             )
             errors.extend(err_footprints)
+
+            # Then, recreate the traces:
+            pass
 
 
 def enforce_position_footprints(
     sheet: SchSheet,
     transform: PositionTransform,
     fp_lookup: Dict[str, pcbnew.FOOTPRINT],
-    group: pcbnew.PCB_GROUP,
+    groupman: GroupManager,
+    group: Optional[pcbnew.PCB_GROUP],
 ):
     errors = []
     # For each footprint in the sub-PCB, find the corresponding footprint on the board:
@@ -276,15 +306,14 @@ def enforce_position_footprints(
             transform.footprint_text(fp_text, fp_target_text, fp_target)
 
         # Move the footprint into the group if one is provided:
-        if group is not None:
-            # First, check if the footprint is already in the group:
-            parent_group = fp_target.GetParentGroup()
-            # If the footprint is not already in the group, remove it from the current group:
-            if parent_group and parent_group.GetName() != group.GetName():
-                parent_group.RemoveItem(fp_target)
-                parent_group = None
-            # If the footprint is not in any group, or was in the wrong group, add it to the right one:
-            if parent_group is None:
-                group.AddItem(fp_target)
+        if groupman.move(fp_target, group):
+            errors.append(
+                ReportedError(
+                    f"footprint {fp_target} is in the wrong group",
+                    message=f"Expected group {group}",
+                    pcb=sheet.pcb,
+                    level=ErrorLevel.ERROR,
+                )
+            )
 
     return errors
