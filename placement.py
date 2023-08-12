@@ -1,12 +1,13 @@
-from itertools import zip_longest
 import logging
 import math
-from typing import Dict, List, Optional, Tuple
+from itertools import zip_longest
+from typing import Callable, Dict, List, Optional, Tuple
+
+import pcbnew
+
 from .hdata import HierarchicalData, PCBRoom, SchSheet
 
 logger = logging.getLogger("hierpcb")
-
-import pcbnew
 
 
 class ErrorLevel:
@@ -55,9 +56,7 @@ class PositionTransform:
         self.anchor_template = template
         self.anchor_mutate = mutate
 
-    def abstract(
-        self, pos_template: pcbnew.VECTOR2I, rot_template: float
-    ) -> Tuple[pcbnew.VECTOR2I, float]:
+    def translate(self, pos_template: pcbnew.VECTOR2I) -> pcbnew.VECTOR2I:
         # Find the position of fp_template relative to the anchor_template:
         delta_x: int = pos_template.x - self.anchor_template.GetPosition().x
         delta_y: int = pos_template.y - self.anchor_template.GetPosition().y
@@ -77,15 +76,14 @@ class PositionTransform:
             - delta_x * math.sin(rotation)
             + self.anchor_mutate.GetPosition().y
         )
+        return pcbnew.VECTOR2I(int(new_x), int(new_y))
 
-        # And we also remember to rotate the footprint:
-        new_rot: float = (
+    def orient(self, rot_template: float):
+        return (
             rot_template
             - self.anchor_template.GetOrientation()
             + self.anchor_mutate.GetOrientation()
         )
-
-        return pcbnew.VECTOR2I(int(new_x), int(new_y)), new_rot
 
     def footprint(
         self, fp_template: pcbnew.FOOTPRINT, fp_mutate: pcbnew.FOOTPRINT
@@ -105,11 +103,9 @@ class PositionTransform:
 
         # Move the footprint:
         # Find the position of fp_template relative to the anchor_template:
-        new_pos, new_rot = self.abstract(
-            fp_template.GetPosition(), fp_template.GetOrientation()
-        )
-        fp_mutate.SetPosition(new_pos)
-        fp_mutate.SetOrientation(new_rot)
+
+        fp_mutate.SetPosition(self.translate(fp_template.GetPosition()))
+        fp_mutate.SetOrientation(self.orient(fp_template.GetOrientation()))
 
     def footprint_text(
         self,
@@ -135,8 +131,7 @@ class PositionTransform:
             # TODO: Set the flipped status
 
             # Move the text:
-            new_pos, new_rot = self.abstract(src.GetPosition(), src.GetTextAngle())
-            dst.SetPosition(new_pos)
+            dst.SetPosition(self.translate(src.GetPosition()))
             # The rotation stacks with the rotation of the footprint, so we don't need to
             # set the rotation here. TODO: Check this with a bunch of rotations.
             # dst.SetTextAngle(new_rot)
@@ -154,7 +149,10 @@ class PositionTransform:
 
         else:
             # We have neither a source nor a destination, so we do nothing.
-            logger.debug("No source or destination text object: {dst} <- {src}")
+            pass
+
+
+GroupMoverType = Callable[[pcbnew.BOARD_ITEM], bool]
 
 
 class GroupManager:
@@ -192,6 +190,10 @@ class GroupManager:
             group.AddItem(item)
 
         return moved
+
+    def mover(self, group: pcbnew.PCB_GROUP) -> GroupMoverType:
+        """Return a function that moves an item to the given group."""
+        return lambda item: self.move(item, group)
 
 
 def enforce_position(hd: HierarchicalData, board: pcbnew.BOARD):
@@ -258,20 +260,67 @@ def enforce_position(hd: HierarchicalData, board: pcbnew.BOARD):
 
             # First, move the footprints:
             err_footprints = enforce_position_footprints(
-                sheet, transform, fp_lookup, groupman, group
+                sheet, transform, fp_lookup, groupman.mover(group)
             )
             errors.extend(err_footprints)
 
             # Then, recreate the traces:
+            err_traces = copy_traces(board, sheet, transform, groupman.mover(group))
+            errors.extend(err_traces)
+
+
+def copy_traces(
+    board: pcbnew.BOARD,
+    sheet: SchSheet,
+    transform: PositionTransform,
+    mover: GroupMoverType,
+):
+    # Instead of figuring out which nets are connected to the sub-PCB, we just copy all the raw traces
+    # and let KiCad figure it out. It seems to work so far.
+
+    errors = []
+    for track in sheet.pcb.subboard.Tracks():
+        # Copy track to trk:
+        # logger.info(f"{track} {type(track)} {track.GetStart()} -> {track.GetEnd()}")
+        if isinstance(track, pcbnew.PCB_ARC):
+            trk = pcbnew.PCB_ARC(board)
+            trk.SetMid(track.GetMid())
+        elif isinstance(track, pcbnew.PCB_VIA):
+            trk = pcbnew.PCB_VIA(board)
+            trk.SetViaType(track.GetViaType())
+            trk.SetDrill(track.GetDrill())
+            trk.SetWidth(track.GetWidth())
+            trk.SetIsFree(track.GetIsFree())
+            trk.SetKeepStartEnd(track.GetKeepStartEnd())
+            trk.SetTopLayer(track.TopLayer())
+            trk.SetBottomLayer(track.BottomLayer())
+            trk.SetRemoveUnconnected(track.GetRemoveUnconnected())
+            # TODO: Check if we need to set zone layer overrides:
+            # GetZoneLayerOverride(self, aLayer)
+            # SetZoneLayerOverride(self, aLayer, aOverride)
+
             pass
+        else:
+            trk = pcbnew.PCB_TRACK(board)
+
+        board.Add(trk)
+        # Set the position:
+        trk.SetStart(transform.translate(track.GetStart()))
+        trk.SetEnd(transform.translate(track.GetEnd()))
+        trk.SetWidth(track.GetWidth())
+        trk.SetLayer(track.GetLayer())
+        # TODO: What other properties do we need to copy?
+
+        mover(trk)
+
+    return errors
 
 
 def enforce_position_footprints(
     sheet: SchSheet,
     transform: PositionTransform,
     fp_lookup: Dict[str, pcbnew.FOOTPRINT],
-    groupman: GroupManager,
-    group: Optional[pcbnew.PCB_GROUP],
+    groupmv: GroupMoverType,
 ):
     errors = []
     # For each footprint in the sub-PCB, find the corresponding footprint on the board:
@@ -306,11 +355,10 @@ def enforce_position_footprints(
             transform.footprint_text(fp_text, fp_target_text, fp_target)
 
         # Move the footprint into the group if one is provided:
-        if groupman.move(fp_target, group):
+        if groupmv(fp_target):
             errors.append(
                 ReportedError(
                     f"footprint {fp_target} is in the wrong group",
-                    message=f"Expected group {group}",
                     pcb=sheet.pcb,
                     level=ErrorLevel.ERROR,
                 )
