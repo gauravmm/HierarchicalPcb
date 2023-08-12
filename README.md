@@ -2,7 +2,9 @@
 
 This provides a true hierarchical PCB layout engine in KiCad, mirroring its hierarchical schematic capabilities.
 
-Instead of laying out everything in your final file, you can define a sub-PCB next to your sub-schematic file, and HierarchicalPCB will automatically force the sub-PCB to be laid out exactly like that in the final PCB. There's no depth limitation to the nesting.
+Instead of laying out everything in your final file, you can define a sub-PCB next to your sub-schematic file, and HierarchicalPCB will automatically force the sub-PCB to be laid out exactly like that in the final PCB. There's no depth limitation to the nesting -- in fact, we encourage organizing your PCB layouts for maximum reusability.
+
+This is inspired by the venerable [`ReplicateLayout`](https://github.com/MitjaNemec/ReplicateLayout) plugin, and is intended to be a more modular, powerful, and flexible replacement.
 
 ## How To Use
 
@@ -18,6 +20,8 @@ In summary:
 4. Select which hierarchical sheets you want to enforce the layout of, and configure which footprint to use as the anchor for each sub-PCB.
 5. Click OK and watch the magic happen.
 
+If you wish to see a project that uses this, check out [AngloDox, my keyboard project](https://github.com/gauravmm/AngloDox/).
+
 ### Details of the placement algorithm
 
 The algorithm works as follows:
@@ -32,14 +36,10 @@ The algorithm works as follows:
    c. Place and rotate the main footprint w.r.t. the main anchor so that it matches the sub-PCB.
 4. For all traces in the sub-PCB:
    a. Clear the traces in the main PCB in the same group as the anchor.
-   b. Recreate all traces.
-
-The _copied properties_ are:
-
-- Layer assignment (i.e. is it "flipped")
+   b. Recreate all traces, arcs, and vias.
 
 ### Notes
 
-Note that HierarchicalPCB will explore the entire tree and, along each path, enforce only the topmost sub-PCB level. For example, if sheet `T` contains `A` and `B`, and `B` contains `A` as a sub-sheet (and sub-sheets `A` and `B` both have associated sub-PCBs), then HierarchicalPCB will enforce the layout of `B` on components inside `B`, even if the components included from `A` by `B` have a different layout from `A`.
-
-This is an important design decision as it allows you to include variant layouts. If you wish to enforce the layout of `A` everywhere, you need to open the sub-PCB of `B` and run HierarchicalPCB on it.
+1. Each footprint may only be positioned following one sub-PCB. If you have a sub-PCB with its own sub-sub-PCBs, you can only enforce the layout of one of them. This is enforced during the selection process.
+2. If you want multiple variations of the same schematic, you can nest them (i.e. LayoutVariant includes LayoutCommon and nothing else, each has a different sub-PCB, and you can enforce the layout of either one).
+3. Currently, it does not support Zones, but I'll happily add that if someone needs it. Open an issue if you're interested and have some time to help me test it.

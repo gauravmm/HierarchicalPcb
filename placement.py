@@ -265,8 +265,20 @@ def enforce_position(hd: HierarchicalData, board: pcbnew.BOARD):
             errors.extend(err_footprints)
 
             # Then, recreate the traces:
+            clear_traces(board, group)
             err_traces = copy_traces(board, sheet, transform, groupman.mover(group))
             errors.extend(err_traces)
+
+
+def clear_traces(board: pcbnew.BOARD, group: pcbnew.PCB_GROUP):
+    """Remove all traces in a group."""
+
+    # RunOnChildren/RunOnDescendants does not work for some reason, probably because the function
+    # pointer type doesn't work in the Python bindings.
+
+    for item in group.GetItems():
+        if isinstance(item, pcbnew.PCB_TRACK):
+            board.RemoveNative(item)
 
 
 def copy_traces(
