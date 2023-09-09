@@ -6,16 +6,24 @@ Instead of laying out everything in your final file, you can define a sub-PCB ne
 
 This is inspired by the venerable [`ReplicateLayout`](https://github.com/MitjaNemec/ReplicateLayout) plugin, and is intended to be a more modular, powerful, and flexible replacement.
 
+**Installation**:
+
+This requires KiCad 7 to run. For now, you have to manually download or clone this repository to the plugin directory. On Windows, this is `C:\Users\<Username>\Documents\KiCad\7.0\3rdparty\plugins`.
+
+I'm working on getting this deployed to the official repository or on hosting my own.
+
 ## How To Use
 
 In summary:
 
 1. Organize your schematic into hierarchical sheets, as you would normally do.
 2. Create a `.kicad_pcb` file next to a hierarchical sheet and set up the placement of the sub-PCB there.
+
    a. You should create a project file to help with the placement.
    b. Any footprints missing from the sub-PCB (but present in the schematic) will be ignored during automatic placement.
    c. Any footprints present in the sub-PCB but missing from the main PCB will be ignored.
    d. Any footprints placed off to the left or above the origin will be ignored during automatic placement.
+
 3. Open the main PCB and run the plugin.
 4. Select which hierarchical sheets you want to enforce the layout of, and configure which footprint to use as the anchor for each sub-PCB.
 5. Click OK and watch the magic happen.
