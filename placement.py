@@ -280,6 +280,9 @@ def clear_traces(board: pcbnew.BOARD, group: pcbnew.PCB_GROUP):
         if isinstance(item, pcbnew.PCB_TRACK):
             board.RemoveNative(item)
 
+        if isinstance(item, pcbnew.ZONE):
+            board.RemoveNative(item)
+
 
 def copy_traces(
     board: pcbnew.BOARD,
@@ -324,6 +327,14 @@ def copy_traces(
         # TODO: What other properties do we need to copy?
 
         mover(trk)
+
+    area_id = 0
+    while sheet.pcb.subboard.GetArea(area_id) is not None:
+        area = sheet.pcb.subboard.GetArea(area_id).Duplicate()
+        board.Add(area)
+        area.Move(transform.translate(pcbnew.VECTOR2I(0, 0)))
+        mover(area)
+        area_id += 1
 
     return errors
 
