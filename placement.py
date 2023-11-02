@@ -310,6 +310,7 @@ def copy_traces(
             trk.SetTopLayer(track.TopLayer())
             trk.SetBottomLayer(track.BottomLayer())
             trk.SetRemoveUnconnected(track.GetRemoveUnconnected())
+            trk.SetNet(board.FindNet(track.GetNetname()))
             # TODO: Check if we need to set zone layer overrides:
             # GetZoneLayerOverride(self, aLayer)
             # SetZoneLayerOverride(self, aLayer, aOverride)
@@ -333,6 +334,7 @@ def copy_traces(
         area = sheet.pcb.subboard.GetArea(area_id).Duplicate()
         board.Add(area)
         area.Move(transform.translate(pcbnew.VECTOR2I(0, 0)))
+        area.SetNet(board.FindNet(area.GetNetname()))
         mover(area)
         area_id += 1
 
