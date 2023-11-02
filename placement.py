@@ -299,7 +299,7 @@ def copy_traces(
         # logger.info(f"{track} {type(track)} {track.GetStart()} -> {track.GetEnd()}")
         if isinstance(track, pcbnew.PCB_ARC):
             trk = pcbnew.PCB_ARC(board)
-            trk.SetMid(track.GetMid())
+            trk.SetMid(transform.translate(track.GetMid()))
         elif isinstance(track, pcbnew.PCB_VIA):
             trk = pcbnew.PCB_VIA(board)
             trk.SetViaType(track.GetViaType())
