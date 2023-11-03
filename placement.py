@@ -284,6 +284,17 @@ def clear_traces(board: pcbnew.BOARD, group: pcbnew.PCB_GROUP):
             board.RemoveNative(item)
 
 
+def find_net_or_create(board: pcbnew.BOARD, net: pcbnew.NETINFO_ITEM):
+    existing_net = board.FindNet(net.GetNetname())
+    if existing_net:
+        return existing_net
+
+    nets = board.GetNetInfo()
+    net.SetNetCode(nets.GetNetCount())
+    nets.AppendNet(net)
+    return net
+
+
 def copy_traces(
     board: pcbnew.BOARD,
     sheet: SchSheet,
@@ -310,7 +321,7 @@ def copy_traces(
             trk.SetTopLayer(track.TopLayer())
             trk.SetBottomLayer(track.BottomLayer())
             trk.SetRemoveUnconnected(track.GetRemoveUnconnected())
-            trk.SetNet(board.FindNet(track.GetNetname()))
+            trk.SetNet(find_net_or_create(board, track.GetNet()))
             # TODO: Check if we need to set zone layer overrides:
             # GetZoneLayerOverride(self, aLayer)
             # SetZoneLayerOverride(self, aLayer, aOverride)
@@ -334,7 +345,7 @@ def copy_traces(
         area = sheet.pcb.subboard.GetArea(area_id).Duplicate()
         board.Add(area)
         area.Move(transform.translate(pcbnew.VECTOR2I(0, 0)))
-        area.SetNet(board.FindNet(area.GetNetname()))
+        area.SetNet(find_net_or_create(board, area.GetNet()))
         mover(area)
         area_id += 1
 
