@@ -277,11 +277,10 @@ def clear_traces(board: pcbnew.BOARD, group: pcbnew.PCB_GROUP):
     # pointer type doesn't work in the Python bindings.
 
     for item in group.GetItems():
-        if isinstance(item, pcbnew.PCB_TRACK):
+        if isinstance(item, (pcbnew.PCB_TRACK, pcbnew.ZONE)):
             board.RemoveNative(item)
 
-        if isinstance(item, pcbnew.ZONE):
-            board.RemoveNative(item)
+        # TODO: Do we need to remove areas too?
 
 
 def find_or_set_net(board: pcbnew.BOARD, net: pcbnew.NETINFO_ITEM):
@@ -340,8 +339,8 @@ def copy_traces(
         mover(trk)
 
     area_id = 0
-    while sheet.pcb.subboard.GetArea(area_id) is not None:
-        area = sheet.pcb.subboard.GetArea(area_id).Duplicate()
+    while area_orig := sheet.pcb.subboard.GetArea(area_id):
+        area = area_orig.Duplicate()
         board.Add(area)
         area.Move(transform.translate(pcbnew.VECTOR2I(0, 0)))
         area.SetNet(find_or_set_net(board, area.GetNet()))
