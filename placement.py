@@ -277,7 +277,8 @@ def clear_traces(board: pcbnew.BOARD, group: pcbnew.PCB_GROUP):
     # pointer type doesn't work in the Python bindings.
 
     for item in group.GetItems():
-        if isinstance(item, (pcbnew.PCB_TRACK, pcbnew.ZONE)):
+        item_type = type(item).__name__
+        if (item_type == 'PCB_TRACK' or item_type == 'pcbnew.ZONE'):
             board.RemoveNative(item)
 
         # TODO: Do we need to remove areas too?
@@ -306,10 +307,11 @@ def copy_traces(
     for track in sheet.pcb.subboard.Tracks():
         # Copy track to trk:
         # logger.info(f"{track} {type(track)} {track.GetStart()} -> {track.GetEnd()}")
-        if isinstance(track, pcbnew.PCB_ARC):
+        track_type = type(track).__name__
+        if track_type == 'PCB_ARC':
             trk = pcbnew.PCB_ARC(board)
             trk.SetMid(transform.translate(track.GetMid()))
-        elif isinstance(track, pcbnew.PCB_VIA):
+        elif track_type == 'PCB_VIA':
             trk = pcbnew.PCB_VIA(board)
             trk.SetViaType(track.GetViaType())
             trk.SetDrill(track.GetDrill())
@@ -324,9 +326,18 @@ def copy_traces(
             # GetZoneLayerOverride(self, aLayer)
             # SetZoneLayerOverride(self, aLayer, aOverride)
 
-            pass
-        else:
+        elif track_type == 'PCB_TRACK':
             trk = pcbnew.PCB_TRACK(board)
+        else:
+            errors.append(
+                ReportedError(
+                    f"unknown track type {track_type}, skipping",
+                    message=f"Track type {type(track)} is not yet implemented",
+                    pcb=sheet.pcb,
+                    level=ErrorLevel.WARNING,
+                )
+            )
+            continue
 
         board.Add(trk)
         # Set the position:
