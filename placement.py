@@ -278,7 +278,7 @@ def clear_traces(board: pcbnew.BOARD, group: pcbnew.PCB_GROUP):
 
     for item in group.GetItems():
         item_type = type(item).__name__
-        if (item_type == 'PCB_TRACK' or item_type == 'pcbnew.ZONE'):
+        if (item_type == 'PCB_TRACK' or item_type == 'ZONE' or item_type == 'PCB_VIA'):
             board.RemoveNative(item)
 
         # TODO: Do we need to remove areas too?
