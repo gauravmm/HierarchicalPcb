@@ -382,11 +382,11 @@ def enforce_position_footprints(
         # Then move the text labels around:
         transform.footprint_text(fp.Reference(), fp_target.Reference())
         transform.footprint_text(fp.Value(), fp_target.Value())
-        for PCB_FIELD, fp_target_text in zip_longest(
+        for pcb_field, fp_target_text in zip_longest(
             fp.GraphicalItems(), fp_target.GraphicalItems()
         ):
             # Provide the target footprint so that we can delete the text if necessary:
-            transform.footprint_text(PCB_FIELD, fp_target_text, fp_target)
+            transform.footprint_text(pcb_field, fp_target_text, fp_target)
 
         # Move the footprint into the group if one is provided:
         if groupmv(fp_target):
