@@ -269,8 +269,8 @@ def get_sheet_hierarchy(
 
         if not curr_sheet.has_metadata():
             try:
-                sheet_file = Path(fp.GetProperty("Sheetfile"))
-                sheet_name = fp.GetProperty("Sheetname")
+                sheet_file = Path(fp.GetSheetfile())
+                sheet_name = fp.GetSheetname()
             except KeyError:
                 logger.debug(f"No Sheetfile for {fp.GetReference()}, skipping.")
                 continue
