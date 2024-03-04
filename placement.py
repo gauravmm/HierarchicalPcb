@@ -277,8 +277,20 @@ def clear_traces(board: pcbnew.BOARD, group: pcbnew.PCB_GROUP):
     # pointer type doesn't work in the Python bindings.
 
     for item in group.GetItems():
-        if isinstance(item, pcbnew.PCB_TRACK):
+        if isinstance(item, (pcbnew.PCB_TRACK, pcbnew.ZONE)):
             board.RemoveNative(item)
+
+        # TODO: Do we need to remove areas too?
+
+
+def find_or_set_net(board: pcbnew.BOARD, net: pcbnew.NETINFO_ITEM):
+    if existing_net := board.FindNet(net.GetNetname()):
+        return existing_net
+
+    nets = board.GetNetInfo()
+    net.SetNetCode(nets.GetNetCount())
+    nets.AppendNet(net)
+    return net
 
 
 def copy_traces(
@@ -296,7 +308,7 @@ def copy_traces(
         # logger.info(f"{track} {type(track)} {track.GetStart()} -> {track.GetEnd()}")
         if isinstance(track, pcbnew.PCB_ARC):
             trk = pcbnew.PCB_ARC(board)
-            trk.SetMid(track.GetMid())
+            trk.SetMid(transform.translate(track.GetMid()))
         elif isinstance(track, pcbnew.PCB_VIA):
             trk = pcbnew.PCB_VIA(board)
             trk.SetViaType(track.GetViaType())
@@ -307,6 +319,7 @@ def copy_traces(
             trk.SetTopLayer(track.TopLayer())
             trk.SetBottomLayer(track.BottomLayer())
             trk.SetRemoveUnconnected(track.GetRemoveUnconnected())
+            trk.SetNet(find_or_set_net(board, track.GetNet()))
             # TODO: Check if we need to set zone layer overrides:
             # GetZoneLayerOverride(self, aLayer)
             # SetZoneLayerOverride(self, aLayer, aOverride)
@@ -324,6 +337,15 @@ def copy_traces(
         # TODO: What other properties do we need to copy?
 
         mover(trk)
+
+    area_id = 0
+    while area_orig := sheet.pcb.subboard.GetArea(area_id):
+        area = area_orig.Duplicate()
+        board.Add(area)
+        area.Move(transform.translate(pcbnew.VECTOR2I(0, 0)))
+        area.SetNet(find_or_set_net(board, area.GetNet()))
+        mover(area)
+        area_id += 1
 
     return errors
 
