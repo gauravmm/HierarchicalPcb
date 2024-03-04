@@ -109,13 +109,13 @@ class PositionTransform:
 
     def footprint_text(
         self,
-        src: Optional[pcbnew.FP_TEXT],
-        dst: Optional[pcbnew.FP_TEXT],
+        src: Optional[pcbnew.PCB_FIELD],
+        dst: Optional[pcbnew.PCB_FIELD],
         dst_fp: Optional[pcbnew.FOOTPRINT] = None,
     ):
         """Move dst to the same position as src, but relative to the anchor_mutate."""
 
-        if type(src) == type(dst) == pcbnew.FP_TEXT:
+        if type(src) == type(dst) == pcbnew.PCB_FIELD:
             src.SetLayer(dst.GetLayer())
             dst.SetTextThickness(src.GetTextThickness())
             dst.SetTextWidth(src.GetTextWidth())
@@ -136,13 +136,13 @@ class PositionTransform:
             # set the rotation here. TODO: Check this with a bunch of rotations.
             # dst.SetTextAngle(new_rot)
 
-        elif type(src) == pcbnew.FP_TEXT:
+        elif type(src) == pcbnew.PCB_FIELD:
             # We have a source but no destination. We should eventually add support for
             # creating a new text object, but not now.
             # TODO: Support creating text objects.
             pass
 
-        elif type(dst) == pcbnew.FP_TEXT:
+        elif type(dst) == pcbnew.PCB_FIELD:
             # We have a destination but no source, so we delete the destination.
             if dst_fp:
                 dst_fp.RemoveNative(dst)
@@ -382,11 +382,11 @@ def enforce_position_footprints(
         # Then move the text labels around:
         transform.footprint_text(fp.Reference(), fp_target.Reference())
         transform.footprint_text(fp.Value(), fp_target.Value())
-        for fp_text, fp_target_text in zip_longest(
+        for PCB_FIELD, fp_target_text in zip_longest(
             fp.GraphicalItems(), fp_target.GraphicalItems()
         ):
             # Provide the target footprint so that we can delete the text if necessary:
-            transform.footprint_text(fp_text, fp_target_text, fp_target)
+            transform.footprint_text(PCB_FIELD, fp_target_text, fp_target)
 
         # Move the footprint into the group if one is provided:
         if groupmv(fp_target):
