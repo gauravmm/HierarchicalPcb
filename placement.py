@@ -130,11 +130,9 @@ class PositionTransform:
 
             # TODO: Set the flipped status
 
-            # Move the text:
+            # Move and rotate the text:
             dst.SetPosition(self.translate(src.GetPosition()))
-            # The rotation stacks with the rotation of the footprint, so we don't need to
-            # set the rotation here. TODO: Check this with a bunch of rotations.
-            # dst.SetTextAngle(new_rot)
+            dst.SetTextAngle(src.GetTextAngle())
 
         elif type(src) == pcbnew.FP_TEXT:
             # We have a source but no destination. We should eventually add support for
