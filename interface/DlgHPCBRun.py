@@ -11,6 +11,20 @@ from .DlgHPCBRun_Base import DlgHPCBRun_Base
 logger = logging.getLogger("hierpcb")
 
 
+def setItemPrefix(tree: wx.dataview.TreeListCtrl, item: wx.dataview.TreeListItem, prefix: str):
+    prefixes = ["✅", "❌"]
+    """Set the prefix of the item's text and remove the previous prefix if any (always separated by a space)."""
+    if prefix not in prefixes:
+        raise ValueError(f"Invalid prefix: {prefix}")
+    text = tree.GetItemText(item)
+    for p in prefixes:
+        text = text.replace(f"{p} ", "")
+    tree.SetItemText(item, f"{prefix} {text}")
+
+def setItemChecked(tree: wx.dataview.TreeListCtrl, item: wx.dataview.TreeListItem, checked: bool):
+    """Set the checked state of the item."""
+    setItemPrefix(tree, item, '✅' if checked else '❌')
+
 def set_checked_default(
     tree: wx.dataview.TreeListCtrl, sheet: SchSheet, ancestor_checked: bool = False
 ):
@@ -26,7 +40,7 @@ def set_checked_default(
             if not ancestor_checked:
                 sheet.checked = True
 
-        tree.SetItemBold(sheet.list_ref, sheet.checked)
+        setItemChecked(tree, sheet.list_ref, sheet.checked)
 
     # Recur on the children:
     for _, child in sorted(sheet.children.items()):
@@ -37,7 +51,7 @@ def apply_checked(tree: wx.dataview.TreeListCtrl, sheet: SchSheet):
     """Mutate the tree to reflect the checked state of the sheets."""
     # Skip nodes that don't have list refs:
     if sheet.list_ref:
-        tree.SetItemBold(sheet.list_ref, sheet.checked)
+        setItemChecked(tree, sheet.list_ref, sheet.checked)
     # Recur on the children:
     for _, child in sorted(sheet.children.items()):
         apply_checked(tree, child)
@@ -64,21 +78,27 @@ class DlgHPCBRun(DlgHPCBRun_Base):
         # Populate the dialog with data:
         self.hD = hD
 
+        sheets = []
+        labels = {}
         for sheet in hD.root_sheet.tree_iter(skip_root=True):
+            if sheet.pcb is None:
+                continue
+            labels[sheet] = f"[{sheet.pcb.path.relative_to(hD.basedir).with_suffix('')}] {sheet.human_name}"
+            if not sheet.pcb.is_legal:
+                labels[sheet] += " No Footprints!"
+            sheets.append(sheet)
+
+        # sort alphabetically
+        sheets = humanSort(sheets, key=lambda x: labels[x])
+
+        for sheet in sheets:
             # Look up the parent, if it is in the tree already.
             parent_item: wx.TreeListItem = (
                 sheet.parent.list_ref or self.treeApplyTo.GetRootItem()
             )
 
-            # If the sheet has a PCB, mention it in the appropriate column:
-            row_text = sheet.human_name
-            if sheet.pcb is not None:
-                row_text += f": {sheet.pcb.path.relative_to(hD.basedir)}"
-                if not sheet.pcb.is_legal:
-                    row_text += " No Footprints!"
-
             item: wx.TreeListItem = self.treeApplyTo.AppendItem(
-                parent=parent_item, text=row_text, data=sheet
+                parent=parent_item, text=labels[sheet], data=sheet
             )
 
             # Add the sheet to the tree, in case it is a future parent:
@@ -108,7 +128,7 @@ class DlgHPCBRun(DlgHPCBRun_Base):
         if is_checkable(self.treeApplyTo, sheet):
             if sheet.checked:
                 sheet.checked = False
-                self.treeApplyTo.SetItemBold(sheet.list_ref, sheet.checked)
+                setItemChecked(self.treeApplyTo, item, False)
             else:
                 # Check it and uncheck all descendants:
                 set_checked_default(self.treeApplyTo, sheet)
@@ -166,3 +186,15 @@ class DlgHPCBRun(DlgHPCBRun_Base):
         """Submit the form."""
         # Mutate the tree structure and
         self.EndModal(wx.ID_OK)
+
+
+def humanSort(list, key=None):
+    '''Sort the given list of strings in the way that humans expect (e.g. "1" < "2" < "10"). Also support all string prefixes and sort those alphabetically like a1 < a11 < b3 < b20'''
+    import re
+    convert = lambda text: int(text) if text.isdigit() else text.lower()
+    alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ]
+    if key:
+        list.sort(key=lambda x: alphanum_key(key(x)))
+    else:
+        list.sort(key=alphanum_key)
+    return list
