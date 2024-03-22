@@ -78,21 +78,29 @@ class DlgHPCBRun(DlgHPCBRun_Base):
         # Populate the dialog with data:
         self.hD = hD
 
+        sheets = []
+        labels = {}
         for sheet in hD.root_sheet.tree_iter(skip_root=True):
+            # If the sheet has a PCB, mention it in the appropriate column:
+            row_text = sheet.human_name
+            if sheet.pcb is not None:
+                row_text = f"[{sheet.pcb.path.relative_to(hD.basedir).with_suffix('')}] {row_text}"
+                if not sheet.pcb.is_legal:
+                    row_text += " No Footprints!"
+            labels[sheet] = row_text
+            sheets.append(sheet)
+
+        # sort alphabetically
+        sheets = humanSort(sheets, key=lambda x: labels[x])
+
+        for sheet in sheets:
             # Look up the parent, if it is in the tree already.
             parent_item: wx.TreeListItem = (
                 sheet.parent.list_ref or self.treeApplyTo.GetRootItem()
             )
 
-            # If the sheet has a PCB, mention it in the appropriate column:
-            row_text = sheet.human_name
-            if sheet.pcb is not None:
-                row_text += f": {sheet.pcb.path.relative_to(hD.basedir)}"
-                if not sheet.pcb.is_legal:
-                    row_text += " No Footprints!"
-
             item: wx.TreeListItem = self.treeApplyTo.AppendItem(
-                parent=parent_item, text=row_text, data=sheet
+                parent=parent_item, text=labels[sheet], data=sheet
             )
 
             # Add the sheet to the tree, in case it is a future parent:
@@ -180,3 +188,15 @@ class DlgHPCBRun(DlgHPCBRun_Base):
         """Submit the form."""
         # Mutate the tree structure and
         self.EndModal(wx.ID_OK)
+
+
+def humanSort(list, key=None):
+    '''Sort the given list of strings in the way that humans expect (e.g. "1" < "2" < "10"). Also support all string prefixes and sort those alphabetically like a1 < a11 < b3 < b20'''
+    import re
+    convert = lambda text: int(text) if text.isdigit() else text.lower()
+    alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ]
+    if key:
+        list.sort(key=lambda x: alphanum_key(key(x)))
+    else:
+        list.sort(key=alphanum_key)
+    return list
