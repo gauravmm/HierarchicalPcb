@@ -11,6 +11,20 @@ from .DlgHPCBRun_Base import DlgHPCBRun_Base
 logger = logging.getLogger("hierpcb")
 
 
+def setItemPrefix(tree: wx.dataview.TreeListCtrl, item: wx.dataview.TreeListItem, prefix: str):
+    prefixes = ["✅", "❌"]
+    """Set the prefix of the item's text and remove the previous prefix if any (always separated by a space)."""
+    if prefix not in prefixes:
+        raise ValueError(f"Invalid prefix: {prefix}")
+    text = tree.GetItemText(item)
+    for p in prefixes:
+        text = text.replace(f"{p} ", "")
+    tree.SetItemText(item, f"{prefix} {text}")
+
+def setItemChecked(tree: wx.dataview.TreeListCtrl, item: wx.dataview.TreeListItem, checked: bool):
+    """Set the checked state of the item."""
+    setItemPrefix(tree, item, '✅' if checked else '❌')
+
 def set_checked_default(
     tree: wx.dataview.TreeListCtrl, sheet: SchSheet, ancestor_checked: bool = False
 ):
@@ -26,7 +40,7 @@ def set_checked_default(
             if not ancestor_checked:
                 sheet.checked = True
 
-        tree.SetItemBold(sheet.list_ref, sheet.checked)
+        setItemChecked(tree, sheet.list_ref, sheet.checked)
 
     # Recur on the children:
     for _, child in sorted(sheet.children.items()):
@@ -37,7 +51,7 @@ def apply_checked(tree: wx.dataview.TreeListCtrl, sheet: SchSheet):
     """Mutate the tree to reflect the checked state of the sheets."""
     # Skip nodes that don't have list refs:
     if sheet.list_ref:
-        tree.SetItemBold(sheet.list_ref, sheet.checked)
+        setItemChecked(tree, sheet.list_ref, sheet.checked)
     # Recur on the children:
     for _, child in sorted(sheet.children.items()):
         apply_checked(tree, child)
@@ -108,7 +122,7 @@ class DlgHPCBRun(DlgHPCBRun_Base):
         if is_checkable(self.treeApplyTo, sheet):
             if sheet.checked:
                 sheet.checked = False
-                self.treeApplyTo.SetItemBold(sheet.list_ref, sheet.checked)
+                setItemChecked(self.treeApplyTo, item, False)
             else:
                 # Check it and uncheck all descendants:
                 set_checked_default(self.treeApplyTo, sheet)
