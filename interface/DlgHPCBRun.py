@@ -81,13 +81,11 @@ class DlgHPCBRun(DlgHPCBRun_Base):
         sheets = []
         labels = {}
         for sheet in hD.root_sheet.tree_iter(skip_root=True):
-            # If the sheet has a PCB, mention it in the appropriate column:
-            row_text = sheet.human_name
-            if sheet.pcb is not None:
-                row_text = f"[{sheet.pcb.path.relative_to(hD.basedir).with_suffix('')}] {row_text}"
-                if not sheet.pcb.is_legal:
-                    row_text += " No Footprints!"
-            labels[sheet] = row_text
+            if sheet.pcb is None:
+                continue
+            labels[sheet] = f"[{sheet.pcb.path.relative_to(hD.basedir).with_suffix('')}] {sheet.human_name}"
+            if not sheet.pcb.is_legal:
+                labels[sheet] += " No Footprints!"
             sheets.append(sheet)
 
         # sort alphabetically
