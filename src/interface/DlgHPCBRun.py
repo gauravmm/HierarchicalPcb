@@ -185,3 +185,15 @@ class DlgHPCBRun(DlgHPCBRun_Base):
         """Submit the form."""
         # Mutate the tree structure and
         self.EndModal(wx.ID_OK)
+
+
+def humanSort(list, key=None):
+    '''Sort the given list of strings in the way that humans expect (e.g. "1" < "2" < "10"). Also support all string prefixes and sort those alphabetically like a1 < a11 < b3 < b20'''
+    import re
+    convert = lambda text: int(text) if text.isdigit() else text.lower()
+    alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ]
+    if key:
+        list.sort(key=lambda x: alphanum_key(key(x)))
+    else:
+        list.sort(key=alphanum_key)
+    return list
