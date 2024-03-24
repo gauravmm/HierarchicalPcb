@@ -116,7 +116,7 @@ class PositionTransform:
         """Move dst to the same position as src, but relative to the anchor_mutate."""
 
         if type(src) == type(dst) == pcbnew.PCB_FIELD:
-            src.SetLayer(dst.GetLayer())
+            dst.SetLayer(src.GetLayer())
             dst.SetTextThickness(src.GetTextThickness())
             dst.SetTextWidth(src.GetTextWidth())
             dst.SetTextHeight(src.GetTextHeight())
@@ -128,7 +128,7 @@ class PositionTransform:
             dst.SetKeepUpright(src.IsKeepUpright())
             dst.SetVisible(src.IsVisible())
 
-            # TODO: Set the flipped status
+            dst.SetMirrored(src.IsMirrored())
 
             # Move the text:
             dst.SetPosition(self.translate(src.GetPosition()))
