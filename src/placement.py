@@ -134,7 +134,8 @@ class PositionTransform:
             dst.SetPosition(self.translate(src.GetPosition()))
             # The rotation stacks with the rotation of the footprint, so we don't need to
             # set the rotation here. TODO: Check this with a bunch of rotations.
-            # dst.SetTextAngle(new_rot)
+            # The rotation still should be set so user modification doesn't result in messed up clones
+            dst.SetTextAngle(self.orient(src.GetTextAngle()))
 
         elif type(src) == pcbnew.PCB_FIELD:
             # We have a source but no destination. We should eventually add support for
@@ -264,10 +265,25 @@ def enforce_position(hd: HierarchicalData, board: pcbnew.BOARD):
             )
             errors.extend(err_footprints)
 
-            # Then, recreate the traces:
+            # Recreate traces:
             clear_traces(board, group)
             err_traces = copy_traces(board, sheet, transform, groupman.mover(group))
             errors.extend(err_traces)
+
+            # Recreate Drawings
+            clear_drawings(board, group)
+            err_drawings = copy_drawings(board,sheet,transform, groupman.mover(group))
+            errors.extend(err_drawings)
+
+            # Recreate Zones Currently broken!
+            # zone.SetPosition() doesn't change position
+            # for some reason?
+            clear_zones(board, group)
+            err_zones = copy_zones(board,sheet,transform, groupman.mover(group))
+            errors.extend(err_zones)
+
+            #Fixes issues with traces lingering after being deleted
+            pcbnew.Refresh()
 
 
 def clear_traces(board: pcbnew.BOARD, group: pcbnew.PCB_GROUP):
@@ -283,14 +299,31 @@ def clear_traces(board: pcbnew.BOARD, group: pcbnew.PCB_GROUP):
         # TODO: Do we need to remove areas too?
 
 
+def clear_drawings(board: pcbnew.BOARD, group: pcbnew.PCB_GROUP):
+    """Remove all drawings in a group."""
+    for item in group.GetItems():
+
+        # Gets all drawings in a group
+        if isinstance(item.Cast(), (pcbnew.PCB_SHAPE, pcbnew.PCB_TEXT)):
+            # Remove every drawing
+            board.RemoveNative(item)
+
+
+def clear_zones(board: pcbnew.BOARD, group: pcbnew.PCB_GROUP):
+    """Remove all zones in a group."""
+    for item in group.GetItems():
+
+        # Gets all drawings in a group
+        if isinstance(item.Cast(), pcbnew.ZONE):
+            # Remove every drawing
+            board.RemoveNative(item)
+
+
 def find_or_set_net(board: pcbnew.BOARD, net: pcbnew.NETINFO_ITEM):
     if existing_net := board.FindNet(net.GetNetname()):
         return existing_net
-
-    nets = board.GetNetInfo()
-    net.SetNetCode(nets.GetNetCount())
-    nets.AppendNet(net)
-    return net
+    else:
+        return board.GetNetsByNetcode()[0]
 
 
 def copy_traces(
@@ -306,46 +339,83 @@ def copy_traces(
     for track in sheet.pcb.subboard.Tracks():
         # Copy track to trk:
         # logger.info(f"{track} {type(track)} {track.GetStart()} -> {track.GetEnd()}")
-        if isinstance(track, pcbnew.PCB_ARC):
-            trk = pcbnew.PCB_ARC(board)
-            trk.SetMid(transform.translate(track.GetMid()))
-        elif isinstance(track, pcbnew.PCB_VIA):
-            trk = pcbnew.PCB_VIA(board)
-            trk.SetViaType(track.GetViaType())
-            trk.SetDrill(track.GetDrill())
-            trk.SetWidth(track.GetWidth())
-            trk.SetIsFree(track.GetIsFree())
-            trk.SetKeepStartEnd(track.GetKeepStartEnd())
-            trk.SetTopLayer(track.TopLayer())
-            trk.SetBottomLayer(track.BottomLayer())
-            trk.SetRemoveUnconnected(track.GetRemoveUnconnected())
-            trk.SetNet(find_or_set_net(board, track.GetNet()))
-            # TODO: Check if we need to set zone layer overrides:
-            # GetZoneLayerOverride(self, aLayer)
-            # SetZoneLayerOverride(self, aLayer, aOverride)
+        
+        trk = track.Duplicate()
 
-            pass
-        else:
-            trk = pcbnew.PCB_TRACK(board)
-
+        # Sets the track end point
+        # the start is handled by item.SetPosition
         board.Add(trk)
-        # Set the position:
-        trk.SetStart(transform.translate(track.GetStart()))
-        trk.SetEnd(transform.translate(track.GetEnd()))
-        trk.SetWidth(track.GetWidth())
-        trk.SetLayer(track.GetLayer())
-        # TODO: What other properties do we need to copy?
+
+        trk.SetNet(find_or_set_net(board, track.GetNet()))
+
+        if isinstance(trk, pcbnew.PCB_TRACK):
+            trk.SetStart(transform.translate(track.GetStart()))
+            trk.SetEnd  (transform.translate(track.GetEnd()  ))
+        else:
+            item.SetPosition(transform.translate(track.GetPosition()))
+            item.Rotate(item.GetPosition(), transform.orient(pcbnew.ANGLE_0))
 
         mover(trk)
 
-    area_id = 0
-    while area_orig := sheet.pcb.subboard.GetArea(area_id):
-        area = area_orig.Duplicate()
-        board.Add(area)
-        area.Move(transform.translate(pcbnew.VECTOR2I(0, 0)))
-        area.SetNet(find_or_set_net(board, area.GetNet()))
-        mover(area)
-        area_id += 1
+    return errors
+
+
+def copy_drawings(
+    board: pcbnew.BOARD,
+    sheet: SchSheet,
+    transform: PositionTransform,
+    mover: GroupMoverType,
+):
+
+    errors = []
+    for drawing in sheet.pcb.subboard.GetDrawings():
+        # if isinstance(drawing, pcbnew.PCB_SHAPE):
+        #     newShape = pcbnew.PCB_SHAPE()
+        # elif isinstance(drawing, pcbnew.PCB_TEXT):
+        #     newShape = pcbnew.PCB_TEXT()   
+        
+        boardItem = drawing.Duplicate()
+
+        board.Add(boardItem)
+
+        # Set New Position
+        boardItem.SetPosition(transform.translate(drawing.GetPosition()))
+
+        # Drawings dont have .SetOrientation()
+        # instead do a relative rotation
+        boardItem.Rotate(boardItem.GetPosition(), transform.orient(pcbnew.ANGLE_0))
+
+        mover(boardItem)
+
+    return errors
+
+
+def copy_zones(
+    board: pcbnew.BOARD,
+    sheet: SchSheet,
+    transform: PositionTransform,
+    mover: GroupMoverType,
+):
+
+    errors = []
+    for zone in sheet.pcb.subboard.Zones():
+        # if isinstance(drawing, pcbnew.PCB_SHAPE):
+        #     newShape = pcbnew.PCB_SHAPE()
+        # elif isinstance(drawing, pcbnew.PCB_TEXT):
+        #     newShape = pcbnew.PCB_TEXT()   
+        
+        newZone = zone.Duplicate()
+
+        board.Add(newZone)
+
+        # Set New Position
+        # newZone.SetPosition(transform.translate(zone.GetPosition()))
+        newZone.Move(transform.translate(pcbnew.VECTOR2I(0, 0)))
+        # Drawings dont have .SetOrientation()
+        # instead do a relative rotation
+        newZone.Rotate(newZone.GetPosition(), transform.orient(pcbnew.ANGLE_0))
+
+        mover(newZone)
 
     return errors
 
