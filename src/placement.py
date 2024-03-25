@@ -410,7 +410,13 @@ def copy_zones(
 
         # Set New Position
         # newZone.SetPosition(transform.translate(zone.GetPosition()))
-        newZone.Move(transform.translate(pcbnew.VECTOR2I(0, 0)))
+        # Temporary Workaround:
+        
+        # Move zone to 0,0 by moving relative
+        newZone.Move(-newZone.GetPosition())
+        # Move zone to correct location
+        newZone.Move(transform.translate(zone.GetPosition()))
+
         # Drawings dont have .SetOrientation()
         # instead do a relative rotation
         newZone.Rotate(newZone.GetPosition(), transform.orient(pcbnew.ANGLE_0))
