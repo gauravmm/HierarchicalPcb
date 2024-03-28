@@ -246,6 +246,12 @@ def enforce_position(hd: HierarchicalData, board: pcbnew.BOARD):
             # move all the footprints into it.
             group_name = f"subpcb_{sheet.human_path}"
             group = groupman.create_or_get(group_name)
+
+            #Clear Volatile items first to prevent them from being orphaned
+            clear_zones(board, group)
+            clear_traces(board, group)
+            clear_drawings(board, group)
+
             if groupman.move(anchor_target, group):
                 errors.append(
                     ReportedError(
@@ -266,24 +272,21 @@ def enforce_position(hd: HierarchicalData, board: pcbnew.BOARD):
             errors.extend(err_footprints)
 
             # Recreate traces:
-            clear_traces(board, group)
             err_traces = copy_traces(board, sheet, transform, groupman.mover(group))
             errors.extend(err_traces)
 
             # Recreate Drawings
-            clear_drawings(board, group)
             err_drawings = copy_drawings(board,sheet,transform, groupman.mover(group))
             errors.extend(err_drawings)
 
-            # Recreate Zones Currently broken!
+            # Recreate Zones Currently Using Work around
             # zone.SetPosition() doesn't change position
             # for some reason?
-            clear_zones(board, group)
             err_zones = copy_zones(board,sheet,transform, groupman.mover(group))
             errors.extend(err_zones)
 
-            #Fixes issues with traces lingering after being deleted
-            pcbnew.Refresh()
+    #Fixes issues with traces lingering after being deleted
+    pcbnew.Refresh()
 
 
 def clear_traces(board: pcbnew.BOARD, group: pcbnew.PCB_GROUP):
