@@ -52,7 +52,6 @@ class DlgHPCBRun_Base(wx.Dialog):
             wx.DefaultSize,
             wx.TR_DEFAULT_STYLE
             | wx.TR_FULL_ROW_HIGHLIGHT
-            | wx.TR_HIDE_ROOT
             | wx.TR_NO_LINES
             | wx.TR_SINGLE
             | wx.TR_TWIST_BUTTONS,
