@@ -1,0 +1,24 @@
+{
+  "subpcb": {
+    "nType/nType.kicad_pcb": {
+      "anchor": "Q1"
+    },
+    "pType/pType.kicad_pcb": {
+      "anchor": "Q1"
+    },
+    "SubPcb.kicad_pcb": {
+      "anchor": "J1"
+    }
+  },
+  "sheet": {
+    "": {
+      "checked": false
+    },
+    "/3003978c-fd0f-4020-b143-0f02e8f5a798": {
+      "checked": true
+    },
+    "/6135ce1c-b744-4b77-ae78-eb08171e0e4b": {
+      "checked": true
+    }
+  }
+}

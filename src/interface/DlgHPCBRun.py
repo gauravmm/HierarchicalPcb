@@ -64,6 +64,11 @@ class DlgHPCBRun(DlgHPCBRun_Base):
         # Populate the dialog with data:
         self.hD = hD
 
+        #Create the root or else our first added layout will be
+        self.treeApplyTo.AddRoot(
+            text=""
+        )
+        
         for sheet in hD.root_sheet.tree_iter(skip_root=True):
             # Look up the parent, if it is in the tree already.
             parent_item: wx.TreeListItem = (
