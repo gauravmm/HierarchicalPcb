@@ -170,7 +170,7 @@
 		(property ki_fp_filters "SSOP*5.3x7.2mm*P0.65mm*")
 		(path "/dc30398b-f30e-4e5f-b269-1bb29b677655")
 		(sheetname "Root")
-		(sheetfile "FlatStructure.kicad_sch")
+		(sheetfile "FolderStructure.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start 2.76 3.71)
@@ -644,7 +644,7 @@
 		(property ki_fp_filters "TO-???* *_Diode_* *SingleDiode* D_*")
 		(path "/6d991a4b-c375-434a-9bb2-d732e04d9857/d6ff2a1e-e54b-463e-a5dc-09169b0a65ca")
 		(sheetname "Sinking Digital2")
-		(sheetfile "SubPcb.kicad_sch")
+		(sheetfile "SubPcb/SubPcb.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -1.684999 -0.96)
@@ -876,7 +876,7 @@
 		(property ki_fp_filters "R_*")
 		(path "/c6c75fec-0368-4360-ab22-fe9626928152/089db75f-e317-4f1e-af92-7ee9e3697c91")
 		(sheetname "Sinking Digital1")
-		(sheetfile "SubPcb.kicad_sch")
+		(sheetfile "SubPcb/SubPcb.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -0.227064 -0.735)
@@ -1087,7 +1087,7 @@
 		(property ki_fp_filters "SOT?23*")
 		(path "/c6c75fec-0368-4360-ab22-fe9626928152/834716fc-fc93-49b3-a482-955f235facf5")
 		(sheetname "Sinking Digital1")
-		(sheetfile "SubPcb.kicad_sch")
+		(sheetfile "SubPcb/SubPcb.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start 0 -1.560001)
@@ -1352,7 +1352,7 @@
 		(property ki_fp_filters "PinHeader*P2.54mm* TerminalBlock*")
 		(path "/20ef401b-a70d-42d0-b562-594cfb45bf38")
 		(sheetname "Root")
-		(sheetfile "FlatStructure.kicad_sch")
+		(sheetfile "FolderStructure.kicad_sch")
 		(attr through_hole)
 		(fp_line
 			(start -1.33 1.27)
@@ -1616,7 +1616,7 @@
 		(property ki_fp_filters "R_*")
 		(path "/6d991a4b-c375-434a-9bb2-d732e04d9857/089db75f-e317-4f1e-af92-7ee9e3697c91")
 		(sheetname "Sinking Digital2")
-		(sheetfile "SubPcb.kicad_sch")
+		(sheetfile "SubPcb/SubPcb.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -0.227064 -0.735)
@@ -1826,7 +1826,7 @@
 		(property ki_fp_filters "TO-???* *_Diode_* *SingleDiode* D_*")
 		(path "/c6c75fec-0368-4360-ab22-fe9626928152/d6ff2a1e-e54b-463e-a5dc-09169b0a65ca")
 		(sheetname "Sinking Digital1")
-		(sheetfile "SubPcb.kicad_sch")
+		(sheetfile "SubPcb/SubPcb.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -1.684999 -0.96)
@@ -2059,7 +2059,7 @@
 		(property ki_fp_filters "SOT?23*")
 		(path "/600193de-35c9-4fdb-a9dc-528e28be004e/834716fc-fc93-49b3-a482-955f235facf5")
 		(sheetname "Sinking Digital")
-		(sheetfile "SubPcb.kicad_sch")
+		(sheetfile "SubPcb/SubPcb.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start 0 -1.560001)
@@ -2324,7 +2324,7 @@
 		(property ki_fp_filters "SOT?23*")
 		(path "/6d991a4b-c375-434a-9bb2-d732e04d9857/834716fc-fc93-49b3-a482-955f235facf5")
 		(sheetname "Sinking Digital2")
-		(sheetfile "SubPcb.kicad_sch")
+		(sheetfile "SubPcb/SubPcb.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start 0 -1.560001)
@@ -2589,7 +2589,7 @@
 		(property ki_fp_filters "PinHeader*P2.54mm* TerminalBlock*")
 		(path "/3d4b581b-679f-423f-9760-32781d56ba29")
 		(sheetname "Root")
-		(sheetfile "FlatStructure.kicad_sch")
+		(sheetfile "FolderStructure.kicad_sch")
 		(attr through_hole)
 		(fp_line
 			(start -1.33 1.27)
@@ -2853,7 +2853,7 @@
 		(property ki_fp_filters "TO-???* *_Diode_* *SingleDiode* D_*")
 		(path "/600193de-35c9-4fdb-a9dc-528e28be004e/d6ff2a1e-e54b-463e-a5dc-09169b0a65ca")
 		(sheetname "Sinking Digital")
-		(sheetfile "SubPcb.kicad_sch")
+		(sheetfile "SubPcb/SubPcb.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -1.684999 -0.96)
@@ -3085,7 +3085,7 @@
 		(property ki_fp_filters "R_*")
 		(path "/600193de-35c9-4fdb-a9dc-528e28be004e/089db75f-e317-4f1e-af92-7ee9e3697c91")
 		(sheetname "Sinking Digital")
-		(sheetfile "SubPcb.kicad_sch")
+		(sheetfile "SubPcb/SubPcb.kicad_sch")
 		(attr smd)
 		(fp_line
 			(start -0.227064 -0.735)
@@ -3296,7 +3296,7 @@
 		(property ki_fp_filters "PinHeader*P2.54mm* TerminalBlock*")
 		(path "/5ffad6d3-7d49-457f-affe-fed06de44888")
 		(sheetname "Root")
-		(sheetfile "FlatStructure.kicad_sch")
+		(sheetfile "FolderStructure.kicad_sch")
 		(attr through_hole)
 		(fp_line
 			(start -1.33 1.27)
