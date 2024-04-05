@@ -207,7 +207,7 @@ def enforce_position(hd: HierarchicalData, board: pcbnew.BOARD):
     errors: List[ReportedError] = []
     groupman: GroupManager = GroupManager(board)
 
-    for sheet in hd.root_sheet.tree_iter():
+    for sheet in hd.root_sheet.children.values():
         if sheet.pcb and sheet.checked:
             # Check if the sub-PCB is legal:
             if not sheet.pcb.is_legal:

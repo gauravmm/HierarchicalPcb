@@ -26,7 +26,7 @@ def setItemChecked(tree: wx.dataview.TreeListCtrl, item: wx.dataview.TreeListIte
     setItemPrefix(tree, item, '✅' if checked else '❌')
 
 def set_checked_default(
-    tree: wx.dataview.TreeListCtrl, sheet: SchSheet, ancestor_checked: bool = False
+    tree: wx.dataview.TreeListCtrl, sheet: SchSheet
 ):
     """Set the tree to its default state starting from node `sheet`."""
 
@@ -37,14 +37,9 @@ def set_checked_default(
         if sheet.pcb and sheet.pcb.is_legal:
             # If an ancestor is checked, this sheet cannot be checked.
             # Otherwise, this is the first sheet from the root to be elligible,
-            if not ancestor_checked:
-                sheet.checked = True
+            sheet.checked = True
 
         setItemChecked(tree, sheet.list_ref, sheet.checked)
-
-    # Recur on the children:
-    for _, child in sorted(sheet.children.items()):
-        set_checked_default(tree, child, sheet.checked or ancestor_checked)
 
 
 def apply_checked(tree: wx.dataview.TreeListCtrl, sheet: SchSheet):
@@ -52,9 +47,6 @@ def apply_checked(tree: wx.dataview.TreeListCtrl, sheet: SchSheet):
     # Skip nodes that don't have list refs:
     if sheet.list_ref:
         setItemChecked(tree, sheet.list_ref, sheet.checked)
-    # Recur on the children:
-    for _, child in sorted(sheet.children.items()):
-        apply_checked(tree, child)
 
 
 def is_checkable(tree: wx.dataview.TreeListCtrl, sheet: SchSheet) -> bool:
@@ -79,36 +71,48 @@ class DlgHPCBRun(DlgHPCBRun_Base):
         self.hD = hD
 
         #Create the root or else our first added layout will be
-        self.treeApplyTo.AddRoot(
+        root_item: wx.TreeListItem = self.treeApplyTo.AddRoot(
             text=""
         )
         
-        for sheet in hD.root_sheet.tree_iter(skip_root=True):
-            # Look up the parent, if it is in the tree already.
-            parent_item: wx.TreeListItem = (
-                sheet.parent.list_ref or self.treeApplyTo.GetRootItem()
-            )
-
+        pcbDict = {}
+        labels = {}
+        for sheet in hD.root_sheet.children.values():
             # If the sheet has a PCB, mention it in the appropriate column:
             row_text = sheet.human_name
+            pcbDict.setdefault(sheet.pcb, []).append(sheet)
+
             if sheet.pcb is not None:
-                row_text += f": {sheet.pcb.path.relative_to(hD.basedir)}"
                 if not sheet.pcb.is_legal:
                     row_text += " No Footprints!"
+            labels[sheet] = row_text
+        
+        for pcb in pcbDict:
+            if pcb and pcb.is_legal:
+                pcb_group_item: wx.TreeListItem = self.treeApplyTo.PrependItem(
+                    parent=root_item, text=f"{pcb.path.relative_to(hD.basedir)}:"
+                )
+            else:
+                pcb_group_item: wx.TreeListItem = self.treeApplyTo.AppendItem(
+                    parent=root_item, text="Invalid PCB:", 
+                )
 
-            item: wx.TreeListItem = self.treeApplyTo.AppendItem(
-                parent=parent_item, text=row_text, data=sheet
-            )
+            pcbDict[pcb] = humanSort(pcbDict[pcb], key=lambda x: labels[x])
 
-            # Add the sheet to the tree, in case it is a future parent:
-            sheet.list_ref = item
+            # Populate the Pcb with it's corrosponding sheets
+            for sheet in pcbDict[pcb]:
+                item: wx.TreeListItem = self.treeApplyTo.AppendItem(
+                    parent=pcb_group_item or invalid_item , text=labels[sheet], data=sheet
+                )
+
+                # Pass a reference item to the sheet:
+                sheet.list_ref = item
+
+                # Set the default state of the tree:
+                if pcb and pcb.is_legal:
+                    apply_checked(self.treeApplyTo, sheet)
 
         self.treeApplyTo.ExpandAll()
-
-        # Set the default state of the tree:
-        # TODO: Mutate the tree structure and
-        # set_checked_default(self.treeApplyTo, hD.root_sheet)
-        apply_checked(self.treeApplyTo, hD.root_sheet)
 
         # Populate the list of available sub-PCBs:
         self.subPCBList.AppendTextColumn("Name")

@@ -142,13 +142,6 @@ class SchSheet:
         # Recur on the rest in the child sheet.
         return self.children[cons].get(rest, create)
 
-    def tree_iter(self, skip_root=False):
-        """Iterate over the tree."""
-        if not skip_root:
-            yield self
-        for _, child in sorted(self.children.items()):
-            yield from child.tree_iter()
-
     def set_checked_default(self, ancestor_checked: bool = False):
         """Set the tree to its default state recursively."""
         self.checked = False
@@ -159,17 +152,10 @@ class SchSheet:
             if not ancestor_checked:
                 self.checked = True
 
-        # Recur on the children:
-        for child in self.children.values():
-            child.set_checked_default(child, self.checked or ancestor_checked)
-
     def cleanup_checked(self, ancestor_checked: bool = False):
         """Make sure that there are no paths from the root that include more than one checked sheet."""
         if ancestor_checked:
             self.checked = False
-        # Recur on the children:
-        for child in self.children.values():
-            child.set_checked_default(child, self.checked or ancestor_checked)
 
     @property
     def identifier(self) -> str:
@@ -217,7 +203,7 @@ class HierarchicalData:
             )
             subpcb.set_anchor_ref(anchor)
 
-        for sheet in self.root_sheet.tree_iter():
+        for sheet in self.root_sheet.children.values():
             sheet.checked = cfg.get("sheet", sheet.identifier, "checked", default=False)
         sheet.cleanup_checked()
 
@@ -232,7 +218,7 @@ class HierarchicalData:
                 value=subpcb.get_anchor_ref(),
             )
         cfg.clear("sheet")
-        for sheet in self.root_sheet.tree_iter():
+        for sheet in self.root_sheet.children.values():
             cfg.set("sheet", sheet.identifier, "checked", value=sheet.checked)
 
 
