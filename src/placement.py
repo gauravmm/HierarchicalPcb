@@ -351,12 +351,11 @@ def copy_traces(
 
         trk.SetNet(find_or_set_net(board, track.GetNet()))
 
-        if isinstance(trk, pcbnew.PCB_TRACK):
-            trk.SetStart(transform.translate(track.GetStart()))
-            trk.SetEnd  (transform.translate(track.GetEnd()  ))
-        else:
-            item.SetPosition(transform.translate(track.GetPosition()))
-            item.Rotate(item.GetPosition(), transform.orient(pcbnew.ANGLE_0))
+        trk.SetStart(transform.translate(track.GetStart()))
+        trk.SetEnd  (transform.translate(track.GetEnd()  ))
+
+        if type(trk) == pcbnew.PCB_VIA:
+            trk.SetIsFree(False)
 
         mover(trk)
 
