@@ -326,7 +326,7 @@ def find_or_set_net(board: pcbnew.BOARD, net: pcbnew.NETINFO_ITEM):
     if existing_net := board.FindNet(net.GetNetname()):
         return existing_net
     else:
-        return board.GetNetsByNetcode()[0]
+        return board.FindNet(0)
 
 
 def copy_traces(
