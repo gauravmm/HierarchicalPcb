@@ -8,7 +8,7 @@ This is inspired by the venerable [`ReplicateLayout`](https://github.com/MitjaNe
 
 **Installation**:
 
-This requires KiCad 7 to run. For now, you have to manually download or clone this repository to the plugin directory. On Windows, this is `C:\Users\<Username>\Documents\KiCad\7.0\3rdparty\plugins`.
+This requires KiCad 8 to run. For now, you have to manually download or clone this repository to the plugin directory. On Windows, this is `C:\Users\<Username>\Documents\KiCad\8.0\3rdparty\plugins`.
 
 I'm working on getting this deployed to the official repository or on hosting my own.
 

@@ -28,7 +28,7 @@ class HierarchicalPCBPlugin(pcbnew.ActionPlugin):
         self.category = "Layout"
         self.description = (
             "True hierarchical layouts to go with the hierarchical schematics."
-            "You can define 'rooms' for different schematics throughout the hierarchy"
+            "You can define 'rooms' for different schematics throughout the hierarchy "
             "and this plugin will enforce them on the PCB."
         )
         self.icon_file_name = str(Path(__file__).parent / "icon.png")

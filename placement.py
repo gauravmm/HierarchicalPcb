@@ -109,14 +109,14 @@ class PositionTransform:
 
     def footprint_text(
         self,
-        src: Optional[pcbnew.FP_TEXT],
-        dst: Optional[pcbnew.FP_TEXT],
+        src: Optional[pcbnew.PCB_FIELD],
+        dst: Optional[pcbnew.PCB_FIELD],
         dst_fp: Optional[pcbnew.FOOTPRINT] = None,
     ):
         """Move dst to the same position as src, but relative to the anchor_mutate."""
 
-        if type(src) == type(dst) == pcbnew.FP_TEXT:
-            src.SetLayer(dst.GetLayer())
+        if type(src) == type(dst) == pcbnew.PCB_FIELD:
+            dst.SetLayer(src.GetLayer())
             dst.SetTextThickness(src.GetTextThickness())
             dst.SetTextWidth(src.GetTextWidth())
             dst.SetTextHeight(src.GetTextHeight())
@@ -128,21 +128,22 @@ class PositionTransform:
             dst.SetKeepUpright(src.IsKeepUpright())
             dst.SetVisible(src.IsVisible())
 
-            # TODO: Set the flipped status
+            dst.SetMirrored(src.IsMirrored())
 
             # Move the text:
             dst.SetPosition(self.translate(src.GetPosition()))
             # The rotation stacks with the rotation of the footprint, so we don't need to
             # set the rotation here. TODO: Check this with a bunch of rotations.
-            # dst.SetTextAngle(new_rot)
+            # The rotation still should be set so user modification doesn't result in messed up clones
+            dst.SetTextAngle(self.orient(src.GetTextAngle()))
 
-        elif type(src) == pcbnew.FP_TEXT:
+        elif type(src) == pcbnew.PCB_FIELD:
             # We have a source but no destination. We should eventually add support for
             # creating a new text object, but not now.
             # TODO: Support creating text objects.
             pass
 
-        elif type(dst) == pcbnew.FP_TEXT:
+        elif type(dst) == pcbnew.PCB_FIELD:
             # We have a destination but no source, so we delete the destination.
             if dst_fp:
                 dst_fp.RemoveNative(dst)
@@ -245,6 +246,12 @@ def enforce_position(hd: HierarchicalData, board: pcbnew.BOARD):
             # move all the footprints into it.
             group_name = f"subpcb_{sheet.human_path}"
             group = groupman.create_or_get(group_name)
+
+            #Clear Volatile items first to prevent them from being orphaned
+            clear_zones(board, group)
+            clear_traces(board, group)
+            clear_drawings(board, group)
+
             if groupman.move(anchor_target, group):
                 errors.append(
                     ReportedError(
@@ -264,10 +271,22 @@ def enforce_position(hd: HierarchicalData, board: pcbnew.BOARD):
             )
             errors.extend(err_footprints)
 
-            # Then, recreate the traces:
-            clear_traces(board, group)
+            # Recreate traces:
             err_traces = copy_traces(board, sheet, transform, groupman.mover(group))
             errors.extend(err_traces)
+
+            # Recreate Drawings
+            err_drawings = copy_drawings(board,sheet,transform, groupman.mover(group))
+            errors.extend(err_drawings)
+
+            # Recreate Zones Currently Using Work around
+            # zone.SetPosition() doesn't change position
+            # for some reason?
+            err_zones = copy_zones(board,sheet,transform, groupman.mover(group))
+            errors.extend(err_zones)
+
+    #Fixes issues with traces lingering after being deleted
+    pcbnew.Refresh()
 
 
 def clear_traces(board: pcbnew.BOARD, group: pcbnew.PCB_GROUP):
@@ -283,14 +302,31 @@ def clear_traces(board: pcbnew.BOARD, group: pcbnew.PCB_GROUP):
         # TODO: Do we need to remove areas too?
 
 
+def clear_drawings(board: pcbnew.BOARD, group: pcbnew.PCB_GROUP):
+    """Remove all drawings in a group."""
+    for item in group.GetItems():
+
+        # Gets all drawings in a group
+        if isinstance(item.Cast(), (pcbnew.PCB_SHAPE, pcbnew.PCB_TEXT)):
+            # Remove every drawing
+            board.RemoveNative(item)
+
+
+def clear_zones(board: pcbnew.BOARD, group: pcbnew.PCB_GROUP):
+    """Remove all zones in a group."""
+    for item in group.GetItems():
+
+        # Gets all drawings in a group
+        if isinstance(item.Cast(), pcbnew.ZONE):
+            # Remove every drawing
+            board.RemoveNative(item)
+
+
 def find_or_set_net(board: pcbnew.BOARD, net: pcbnew.NETINFO_ITEM):
     if existing_net := board.FindNet(net.GetNetname()):
         return existing_net
-
-    nets = board.GetNetInfo()
-    net.SetNetCode(nets.GetNetCount())
-    nets.AppendNet(net)
-    return net
+    else:
+        return board.FindNet(0)
 
 
 def copy_traces(
@@ -306,46 +342,88 @@ def copy_traces(
     for track in sheet.pcb.subboard.Tracks():
         # Copy track to trk:
         # logger.info(f"{track} {type(track)} {track.GetStart()} -> {track.GetEnd()}")
-        if isinstance(track, pcbnew.PCB_ARC):
-            trk = pcbnew.PCB_ARC(board)
-            trk.SetMid(transform.translate(track.GetMid()))
-        elif isinstance(track, pcbnew.PCB_VIA):
-            trk = pcbnew.PCB_VIA(board)
-            trk.SetViaType(track.GetViaType())
-            trk.SetDrill(track.GetDrill())
-            trk.SetWidth(track.GetWidth())
-            trk.SetIsFree(track.GetIsFree())
-            trk.SetKeepStartEnd(track.GetKeepStartEnd())
-            trk.SetTopLayer(track.TopLayer())
-            trk.SetBottomLayer(track.BottomLayer())
-            trk.SetRemoveUnconnected(track.GetRemoveUnconnected())
-            trk.SetNet(find_or_set_net(board, track.GetNet()))
-            # TODO: Check if we need to set zone layer overrides:
-            # GetZoneLayerOverride(self, aLayer)
-            # SetZoneLayerOverride(self, aLayer, aOverride)
+        
+        trk = track.Duplicate()
 
-            pass
-        else:
-            trk = pcbnew.PCB_TRACK(board)
-
+        # Sets the track end point
+        # the start is handled by item.SetPosition
         board.Add(trk)
-        # Set the position:
+
+        trk.SetNet(find_or_set_net(board, track.GetNet()))
+
         trk.SetStart(transform.translate(track.GetStart()))
-        trk.SetEnd(transform.translate(track.GetEnd()))
-        trk.SetWidth(track.GetWidth())
-        trk.SetLayer(track.GetLayer())
-        # TODO: What other properties do we need to copy?
+        trk.SetEnd  (transform.translate(track.GetEnd()  ))
+
+        if type(trk) == pcbnew.PCB_VIA:
+            trk.SetIsFree(False)
 
         mover(trk)
 
-    area_id = 0
-    while area_orig := sheet.pcb.subboard.GetArea(area_id):
-        area = area_orig.Duplicate()
-        board.Add(area)
-        area.Move(transform.translate(pcbnew.VECTOR2I(0, 0)))
-        area.SetNet(find_or_set_net(board, area.GetNet()))
-        mover(area)
-        area_id += 1
+    return errors
+
+
+def copy_drawings(
+    board: pcbnew.BOARD,
+    sheet: SchSheet,
+    transform: PositionTransform,
+    mover: GroupMoverType,
+):
+
+    errors = []
+    for drawing in sheet.pcb.subboard.GetDrawings():
+        # if isinstance(drawing, pcbnew.PCB_SHAPE):
+        #     newShape = pcbnew.PCB_SHAPE()
+        # elif isinstance(drawing, pcbnew.PCB_TEXT):
+        #     newShape = pcbnew.PCB_TEXT()   
+        
+        boardItem = drawing.Duplicate()
+
+        board.Add(boardItem)
+
+        # Set New Position
+        boardItem.SetPosition(transform.translate(drawing.GetPosition()))
+
+        # Drawings dont have .SetOrientation()
+        # instead do a relative rotation
+        boardItem.Rotate(boardItem.GetPosition(), transform.orient(pcbnew.ANGLE_0))
+
+        mover(boardItem)
+
+    return errors
+
+
+def copy_zones(
+    board: pcbnew.BOARD,
+    sheet: SchSheet,
+    transform: PositionTransform,
+    mover: GroupMoverType,
+):
+
+    errors = []
+    for zone in sheet.pcb.subboard.Zones():
+        # if isinstance(drawing, pcbnew.PCB_SHAPE):
+        #     newShape = pcbnew.PCB_SHAPE()
+        # elif isinstance(drawing, pcbnew.PCB_TEXT):
+        #     newShape = pcbnew.PCB_TEXT()   
+        
+        newZone = zone.Duplicate()
+
+        board.Add(newZone)
+
+        # Set New Position
+        # newZone.SetPosition(transform.translate(zone.GetPosition()))
+        # Temporary Workaround:
+        
+        # Move zone to 0,0 by moving relative
+        newZone.Move(-newZone.GetPosition())
+        # Move zone to correct location
+        newZone.Move(transform.translate(zone.GetPosition()))
+
+        # Drawings dont have .SetOrientation()
+        # instead do a relative rotation
+        newZone.Rotate(newZone.GetPosition(), transform.orient(pcbnew.ANGLE_0))
+
+        mover(newZone)
 
     return errors
 
@@ -382,11 +460,11 @@ def enforce_position_footprints(
         # Then move the text labels around:
         transform.footprint_text(fp.Reference(), fp_target.Reference())
         transform.footprint_text(fp.Value(), fp_target.Value())
-        for fp_text, fp_target_text in zip_longest(
+        for pcb_field, fp_target_text in zip_longest(
             fp.GraphicalItems(), fp_target.GraphicalItems()
         ):
             # Provide the target footprint so that we can delete the text if necessary:
-            transform.footprint_text(fp_text, fp_target_text, fp_target)
+            transform.footprint_text(pcb_field, fp_target_text, fp_target)
 
         # Move the footprint into the group if one is provided:
         if groupmv(fp_target):
