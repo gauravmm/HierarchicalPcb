@@ -322,8 +322,11 @@ def clear_zones(board: pcbnew.BOARD, group: pcbnew.PCB_GROUP):
             board.RemoveNative(item)
 
 
-def find_or_set_net(board: pcbnew.BOARD, net: pcbnew.NETINFO_ITEM):
-    if existing_net := board.FindNet(net.GetNetname()):
+def find_or_set_net(sheet: SchSheet, board: pcbnew.BOARD, net: pcbnew.NETINFO_ITEM):
+
+    if existing_net := board.FindNet("/" + sheet.human_name + net.GetNetname()):
+        return existing_net
+    elif existing_net := board.FindNet(net.GetNetname()):
         return existing_net
     else:
         return board.FindNet(0)
@@ -349,7 +352,7 @@ def copy_traces(
         # the start is handled by item.SetPosition
         board.Add(trk)
 
-        trk.SetNet(find_or_set_net(board, track.GetNet()))
+        trk.SetNet(find_or_set_net(sheet, board, track.GetNet()))
 
         trk.SetStart(transform.translate(track.GetStart()))
         trk.SetEnd  (transform.translate(track.GetEnd()  ))
@@ -407,6 +410,8 @@ def copy_zones(
         #     newShape = pcbnew.PCB_TEXT()   
         
         newZone = zone.Duplicate()
+
+        newZone.SetNet(find_or_set_net(sheet, board, zone.GetNet()))
 
         board.Add(newZone)
 
