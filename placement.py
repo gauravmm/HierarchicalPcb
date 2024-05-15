@@ -197,15 +197,15 @@ class GroupManager:
         return lambda item: self.move(item, group)
 
 
-def enforce_position(hd: HierarchicalData, board: pcbnew.BOARD):
+def enforce_position(hd: HierarchicalData, targetBoard: pcbnew.BOARD):
     """Enforce the positions of objects in PCB template on PCB mutate."""
     # Prepare a lookup table for footprints in the board:
     # Since board.FindFootprintByPath() operates on a custom type that we can't easily
     # construct, we prepare a table for efficient string lookups instead.
-    fp_lookup = {fp.GetPath().AsString(): fp for fp in board.GetFootprints()}
+    fp_lookup = {fp.GetPath().AsString(): fp for fp in targetBoard.GetFootprints()}
 
     errors: List[ReportedError] = []
-    groupman: GroupManager = GroupManager(board)
+    groupman: GroupManager = GroupManager(targetBoard)
 
     for sheet in hd.root_sheet.tree_iter():
         if sheet.pcb and sheet.checked:
@@ -247,10 +247,8 @@ def enforce_position(hd: HierarchicalData, board: pcbnew.BOARD):
             group_name = f"subpcb_{sheet.human_path}"
             group = groupman.create_or_get(group_name)
 
-            #Clear Volatile items first to prevent them from being orphaned
-            clear_zones(board, group)
-            clear_traces(board, group)
-            clear_drawings(board, group)
+            # Clear Volatile items first
+            clear_volatile_items(targetBoard, group)
 
             if groupman.move(anchor_target, group):
                 errors.append(
@@ -272,54 +270,40 @@ def enforce_position(hd: HierarchicalData, board: pcbnew.BOARD):
             errors.extend(err_footprints)
 
             # Recreate traces:
-            err_traces = copy_traces(board, sheet, transform, groupman.mover(group))
+            err_traces = copy_traces(targetBoard, sheet, transform, groupman.mover(group))
             errors.extend(err_traces)
 
             # Recreate Drawings
-            err_drawings = copy_drawings(board,sheet,transform, groupman.mover(group))
+            err_drawings = copy_drawings(targetBoard,sheet,transform, groupman.mover(group))
             errors.extend(err_drawings)
 
             # Recreate Zones Currently Using Work around
             # zone.SetPosition() doesn't change position
             # for some reason?
-            err_zones = copy_zones(board,sheet,transform, groupman.mover(group))
+            err_zones = copy_zones(targetBoard,sheet,transform, groupman.mover(group))
             errors.extend(err_zones)
 
     #Fixes issues with traces lingering after being deleted
     pcbnew.Refresh()
 
 
-def clear_traces(board: pcbnew.BOARD, group: pcbnew.PCB_GROUP):
-    """Remove all traces in a group."""
-
-    # RunOnChildren/RunOnDescendants does not work for some reason, probably because the function
-    # pointer type doesn't work in the Python bindings.
-
-    for item in group.GetItems():
-        if isinstance(item, (pcbnew.PCB_TRACK, pcbnew.ZONE)):
-            board.RemoveNative(item)
-
-        # TODO: Do we need to remove areas too?
-
-
-def clear_drawings(board: pcbnew.BOARD, group: pcbnew.PCB_GROUP):
-    """Remove all drawings in a group."""
-    for item in group.GetItems():
-
-        # Gets all drawings in a group
-        if isinstance(item.Cast(), (pcbnew.PCB_SHAPE, pcbnew.PCB_TEXT)):
-            # Remove every drawing
-            board.RemoveNative(item)
-
-
-def clear_zones(board: pcbnew.BOARD, group: pcbnew.PCB_GROUP):
+def clear_volatile_items(targetBoard: pcbnew.BOARD, group: pcbnew.PCB_GROUP):
     """Remove all zones in a group."""
+    itemTypesToRemove = (
+        # Traces
+        pcbnew.PCB_TRACK, pcbnew.ZONE,
+        # Drawings
+        pcbnew.PCB_SHAPE, pcbnew.PCB_TEXT,
+        # Zones
+        pcbnew.ZONE
+    )
+
     for item in group.GetItems():
 
         # Gets all drawings in a group
-        if isinstance(item.Cast(), pcbnew.ZONE):
+        if isinstance(item.Cast(), itemTypesToRemove):
             # Remove every drawing
-            board.RemoveNative(item)
+            targetBoard.RemoveNative(item)
 
 
 def find_or_set_net(sheet: SchSheet, board: pcbnew.BOARD, net: pcbnew.NETINFO_ITEM):
@@ -333,7 +317,7 @@ def find_or_set_net(sheet: SchSheet, board: pcbnew.BOARD, net: pcbnew.NETINFO_IT
 
 
 def copy_traces(
-    board: pcbnew.BOARD,
+    targetBoard: pcbnew.BOARD,
     sheet: SchSheet,
     transform: PositionTransform,
     mover: GroupMoverType,
@@ -342,78 +326,74 @@ def copy_traces(
     # and let KiCad figure it out. It seems to work so far.
 
     errors = []
-    for track in sheet.pcb.subboard.Tracks():
+    for sourceTrack in sheet.pcb.subboard.Tracks():
         # Copy track to trk:
         # logger.info(f"{track} {type(track)} {track.GetStart()} -> {track.GetEnd()}")
         
-        trk = track.Duplicate()
+        newTrack = sourceTrack.Duplicate()
 
         # Sets the track end point
         # the start is handled by item.SetPosition
-        board.Add(trk)
+        targetBoard.Add(newTrack)
 
-        trk.SetNet(find_or_set_net(sheet, board, track.GetNet()))
+        newTrack.SetNet(find_or_set_net(sheet, targetBoard, sourceTrack.GetNet()))
 
-        trk.SetStart(transform.translate(track.GetStart()))
-        trk.SetEnd  (transform.translate(track.GetEnd()  ))
+        newTrack.SetStart(transform.translate(sourceTrack.GetStart()))
+        newTrack.SetEnd  (transform.translate(sourceTrack.GetEnd()  ))
 
-        if type(trk) == pcbnew.PCB_VIA:
-            trk.SetIsFree(False)
+        if type(newTrack) == pcbnew.PCB_VIA:
+            newTrack.SetIsFree(False)
 
-        mover(trk)
+        mover(newTrack)
 
     return errors
 
 
 def copy_drawings(
-    board: pcbnew.BOARD,
+    targetBoard: pcbnew.BOARD,
     sheet: SchSheet,
     transform: PositionTransform,
     mover: GroupMoverType,
 ):
 
     errors = []
-    for drawing in sheet.pcb.subboard.GetDrawings():
-        # if isinstance(drawing, pcbnew.PCB_SHAPE):
-        #     newShape = pcbnew.PCB_SHAPE()
-        # elif isinstance(drawing, pcbnew.PCB_TEXT):
-        #     newShape = pcbnew.PCB_TEXT()   
+    for sourceDrawing in sheet.pcb.subboard.GetDrawings(): 
         
-        boardItem = drawing.Duplicate()
+        newDrawing = sourceDrawing.Duplicate()
 
-        board.Add(boardItem)
+        targetBoard.Add(newDrawing)
 
         # Set New Position
-        boardItem.SetPosition(transform.translate(drawing.GetPosition()))
+        newDrawing.SetPosition(transform.translate(sourceDrawing.GetPosition()))
 
         # Drawings dont have .SetOrientation()
         # instead do a relative rotation
-        boardItem.Rotate(boardItem.GetPosition(), transform.orient(pcbnew.ANGLE_0))
+        newDrawing.Rotate(newDrawing.GetPosition(), transform.orient(pcbnew.ANGLE_0))
 
-        mover(boardItem)
+        mover(newDrawing)
 
     return errors
 
 
 def copy_zones(
-    board: pcbnew.BOARD,
+    targetBoard: pcbnew.BOARD,
     sheet: SchSheet,
     transform: PositionTransform,
     mover: GroupMoverType,
 ):
 
     errors = []
-    for zone in sheet.pcb.subboard.Zones():
+    for sourceZone in sheet.pcb.subboard.Zones():
         # if isinstance(drawing, pcbnew.PCB_SHAPE):
         #     newShape = pcbnew.PCB_SHAPE()
         # elif isinstance(drawing, pcbnew.PCB_TEXT):
         #     newShape = pcbnew.PCB_TEXT()   
         
-        newZone = zone.Duplicate()
+        newZone = sourceZone.Duplicate()
 
-        newZone.SetNet(find_or_set_net(sheet, board, zone.GetNet()))
+        newZone.SetNet(find_or_set_net(sheet, targetBoard, sourceZone.GetNet()))
 
-        board.Add(newZone)
+        targetBoard.Add(newZone)
 
         # Set New Position
         # newZone.SetPosition(transform.translate(zone.GetPosition()))
@@ -422,7 +402,7 @@ def copy_zones(
         # Move zone to 0,0 by moving relative
         newZone.Move(-newZone.GetPosition())
         # Move zone to correct location
-        newZone.Move(transform.translate(zone.GetPosition()))
+        newZone.Move(transform.translate(sourceZone.GetPosition()))
 
         # Drawings dont have .SetOrientation()
         # instead do a relative rotation
