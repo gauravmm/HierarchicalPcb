@@ -85,73 +85,6 @@ class PositionTransform:
             + self.anchor_mutate.GetOrientation()
         )
 
-    def footprint(
-        self, fp_template: pcbnew.FOOTPRINT, fp_mutate: pcbnew.FOOTPRINT
-    ) -> None:
-        """Transform fp_mutate so it is in the same position as fp_template, but relative to the mutate_anchor."""
-        if fp_template.IsFlipped() != fp_mutate.IsFlipped():
-            fp_mutate.Flip(fp_mutate.GetPosition(), False)
-
-        # The list of properties is from the ReplicateLayout plugin. Thanks @MitjaNemec!
-        fp_mutate.SetLocalClearance(fp_template.GetLocalClearance())
-        fp_mutate.SetLocalSolderMaskMargin(fp_template.GetLocalSolderMaskMargin())
-        fp_mutate.SetLocalSolderPasteMargin(fp_template.GetLocalSolderPasteMargin())
-        fp_mutate.SetLocalSolderPasteMarginRatio(
-            fp_template.GetLocalSolderPasteMarginRatio()
-        )
-        fp_mutate.SetZoneConnection(fp_template.GetZoneConnection())
-
-        # Move the footprint:
-        # Find the position of fp_template relative to the anchor_template:
-
-        fp_mutate.SetPosition(self.translate(fp_template.GetPosition()))
-        fp_mutate.SetOrientation(self.orient(fp_template.GetOrientation()))
-
-    def footprint_text(
-        self,
-        src: Optional[pcbnew.PCB_FIELD],
-        dst: Optional[pcbnew.PCB_FIELD],
-        dst_fp: Optional[pcbnew.FOOTPRINT] = None,
-    ):
-        """Move dst to the same position as src, but relative to the anchor_mutate."""
-
-        if type(src) == type(dst) == pcbnew.PCB_FIELD:
-            dst.SetLayer(src.GetLayer())
-            dst.SetTextThickness(src.GetTextThickness())
-            dst.SetTextWidth(src.GetTextWidth())
-            dst.SetTextHeight(src.GetTextHeight())
-            dst.SetItalic(src.IsItalic())
-            dst.SetBold(src.IsBold())
-            dst.SetMultilineAllowed(src.IsMultilineAllowed())
-            dst.SetHorizJustify(src.GetHorizJustify())
-            dst.SetVertJustify(src.GetVertJustify())
-            dst.SetKeepUpright(src.IsKeepUpright())
-            dst.SetVisible(src.IsVisible())
-
-            dst.SetMirrored(src.IsMirrored())
-
-            # Move the text:
-            dst.SetPosition(self.translate(src.GetPosition()))
-            # The rotation stacks with the rotation of the footprint, so we don't need to
-            # set the rotation here. TODO: Check this with a bunch of rotations.
-            # The rotation still should be set so user modification doesn't result in messed up clones
-            dst.SetTextAngle(self.orient(src.GetTextAngle()))
-
-        elif type(src) == pcbnew.PCB_FIELD:
-            # We have a source but no destination. We should eventually add support for
-            # creating a new text object, but not now.
-            # TODO: Support creating text objects.
-            pass
-
-        elif type(dst) == pcbnew.PCB_FIELD:
-            # We have a destination but no source, so we delete the destination.
-            if dst_fp:
-                dst_fp.RemoveNative(dst)
-
-        else:
-            # We have neither a source nor a destination, so we do nothing.
-            pass
-
 
 GroupMoverType = Callable[[pcbnew.BOARD_ITEM], bool]
 
@@ -413,6 +346,56 @@ def copy_zones(
     return errors
 
 
+def copy_footprint_fields(
+    sourceFootprint: pcbnew.FOOTPRINT,
+    targetFootprint: pcbnew.FOOTPRINT, 
+    transform: PositionTransform,
+):
+    # NOTE: Non center aligned Fields position changes with rotation.
+    #       This is not a bug. The replicated pcbs are behaving the 
+    #       exact same as the original would when rotated.
+
+    # Do any other field values need preserved?
+    originalReference = targetFootprint.GetReference()
+
+    # Remove Existing footprint fields
+    for existingField in targetFootprint.GetFields():
+        targetFootprint.RemoveNative(existingField)
+    # Add all the source fields and move them
+    for sourceField in sourceFootprint.GetFields():
+        newField = sourceField.CloneField()
+        newField.SetParent(targetFootprint)
+        
+        newField.SetPosition(transform.translate(sourceField.GetPosition()))
+        newField.Rotate(newField.GetPosition(), transform.orient(pcbnew.ANGLE_0))
+
+        targetFootprint.AddField(newField)
+
+    targetFootprint.SetReference(originalReference)
+
+
+def copy_footprint_data(
+    sourceFootprint: pcbnew.FOOTPRINT,
+    targetFootprint: pcbnew.FOOTPRINT, 
+    transform: PositionTransform,
+):
+    if sourceFootprint.IsFlipped() != targetFootprint.IsFlipped():
+        targetFootprint.Flip(targetFootprint.GetPosition(), False)
+
+    # The list of properties is from the ReplicateLayout plugin. Thanks @MitjaNemec!
+    targetFootprint.SetLocalClearance(sourceFootprint.GetLocalClearance())
+    targetFootprint.SetLocalSolderMaskMargin(sourceFootprint.GetLocalSolderMaskMargin())
+    targetFootprint.SetLocalSolderPasteMargin(sourceFootprint.GetLocalSolderPasteMargin())
+    targetFootprint.SetLocalSolderPasteMarginRatio(
+        sourceFootprint.GetLocalSolderPasteMarginRatio()
+    )
+    targetFootprint.SetZoneConnection(sourceFootprint.GetZoneConnection())
+
+    # Move the footprint:
+    targetFootprint.SetPosition(transform.translate(sourceFootprint.GetPosition()))
+    targetFootprint.SetOrientation(transform.orient(sourceFootprint.GetOrientation()))
+
+
 def enforce_position_footprints(
     sheet: SchSheet,
     transform: PositionTransform,
@@ -421,17 +404,17 @@ def enforce_position_footprints(
 ):
     errors = []
     # For each footprint in the sub-PCB, find the corresponding footprint on the board:
-    for fp in sheet.pcb.subboard.GetFootprints():
+    for sourceFootprint in sheet.pcb.subboard.GetFootprints():
         # Find the corresponding footprint on the board:
-        fp_path = sheet.identifier + fp.GetPath().AsString()
-        fp_target = fp_lookup.get(fp_path)
+        fp_path = sheet.identifier + sourceFootprint.GetPath().AsString()
+        targetFootprint = fp_lookup.get(fp_path)
 
-        if not fp_target:
+        if not targetFootprint:
             errors.append(
                 ReportedError(
                     "footprint not found, skipping",
-                    message=f"Corresponding to {fp.GetReference()} for sheet {sheet.human_name}",
-                    footprint=fp,
+                    message=f"Corresponding to {sourceFootprint.GetReference()} for sheet {sheet.human_name}",
+                    footprint=sourceFootprint,
                     pcb=sheet.pcb,
                     level=ErrorLevel.WARNING,
                 )
@@ -441,21 +424,15 @@ def enforce_position_footprints(
         # TODO: Ignore footprints outside the lower-right quadrant.
 
         # Copy the properties and move the template to the target:
-        transform.footprint(fp, fp_target)
-        # Then move the text labels around:
-        transform.footprint_text(fp.Reference(), fp_target.Reference())
-        transform.footprint_text(fp.Value(), fp_target.Value())
-        for pcb_field, fp_target_text in zip_longest(
-            fp.GraphicalItems(), fp_target.GraphicalItems()
-        ):
-            # Provide the target footprint so that we can delete the text if necessary:
-            transform.footprint_text(pcb_field, fp_target_text, fp_target)
+        copy_footprint_data(sourceFootprint, targetFootprint, transform)
+        
+        copy_footprint_fields(sourceFootprint, targetFootprint, transform)
 
         # Move the footprint into the group if one is provided:
-        if groupmv(fp_target):
+        if groupmv(targetFootprint):
             errors.append(
                 ReportedError(
-                    f"footprint {fp_target} is in the wrong group",
+                    f"footprint {targetFootprint} is in the wrong group",
                     pcb=sheet.pcb,
                     level=ErrorLevel.ERROR,
                 )
