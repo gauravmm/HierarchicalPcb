@@ -977,4 +977,26 @@
 		(net 4)
 		(uuid "6e7e683f-1bda-458b-9c8d-fc66d6f6e4ca")
 	)
+	(zone
+		(net 3)
+		(net_name "/Input")
+		(layer "F.Cu")
+		(uuid "e4896a38-72e4-4a3e-bc95-e15ee6356a1c")
+		(hatch edge 0.5)
+		(priority 3)
+		(connect_pads
+			(clearance 0)
+		)
+		(min_thickness 0.25)
+		(filled_areas_thickness no)
+		(fill
+			(thermal_gap 0.5)
+			(thermal_bridge_width 0.5)
+		)
+		(polygon
+			(pts
+				(xy 12.954 15.367) (xy 20.828 15.367) (xy 18.542 17.78) (xy 12.954 17.78)
+			)
+		)
+	)
 )

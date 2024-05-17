@@ -804,6 +804,16 @@
 					(unit 1)
 				)
 			)
+			(project "SubPcb"
+				(path "/e0597968-f11c-42e6-8091-8a167b37e076"
+					(reference "R1")
+					(unit 1)
+				)
+				(path "/e0597968-f11c-42e6-8091-8a167b37e076/6135ce1c-b744-4b77-ae78-eb08171e0e4b"
+					(reference "R1")
+					(unit 1)
+				)
+			)
 		)
 	)
 	(symbol
@@ -887,6 +897,16 @@
 					(unit 1)
 				)
 			)
+			(project "SubPcb"
+				(path "/e0597968-f11c-42e6-8091-8a167b37e076"
+					(reference "Q1")
+					(unit 1)
+				)
+				(path "/e0597968-f11c-42e6-8091-8a167b37e076/6135ce1c-b744-4b77-ae78-eb08171e0e4b"
+					(reference "Q1")
+					(unit 1)
+				)
+			)
 		)
 	)
 	(symbol
@@ -965,6 +985,16 @@
 					(unit 1)
 				)
 			)
+			(project "SubPcb"
+				(path "/e0597968-f11c-42e6-8091-8a167b37e076"
+					(reference "D1")
+					(unit 1)
+				)
+				(path "/e0597968-f11c-42e6-8091-8a167b37e076/6135ce1c-b744-4b77-ae78-eb08171e0e4b"
+					(reference "D1")
+					(unit 1)
+				)
+			)
 		)
 	)
 	(symbol
@@ -1039,6 +1069,21 @@
 					(unit 1)
 				)
 			)
+			(project "SubPcb"
+				(path "/e0597968-f11c-42e6-8091-8a167b37e076"
+					(reference "#PWR01")
+					(unit 1)
+				)
+				(path "/e0597968-f11c-42e6-8091-8a167b37e076/6135ce1c-b744-4b77-ae78-eb08171e0e4b"
+					(reference "#PWR03")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(sheet_instances
+		(path "/"
+			(page "1")
 		)
 	)
 )

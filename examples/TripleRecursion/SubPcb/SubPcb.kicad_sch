@@ -665,6 +665,12 @@
 					(unit 1)
 				)
 			)
+			(project "SubPcb"
+				(path "/e0597968-f11c-42e6-8091-8a167b37e076"
+					(reference "#PWR02")
+					(unit 1)
+				)
+			)
 		)
 	)
 	(symbol
@@ -748,6 +754,12 @@
 					(unit 1)
 				)
 			)
+			(project "SubPcb"
+				(path "/e0597968-f11c-42e6-8091-8a167b37e076"
+					(reference "J1")
+					(unit 1)
+				)
+			)
 		)
 	)
 	(symbol
@@ -822,6 +834,12 @@
 					(unit 1)
 				)
 			)
+			(project "SubPcb"
+				(path "/e0597968-f11c-42e6-8091-8a167b37e076"
+					(reference "#PWR01")
+					(unit 1)
+				)
+			)
 		)
 	)
 	(sheet
@@ -883,6 +901,11 @@
 				)
 				(path "/5225e552-cfab-4090-a502-b034bf1f2bf2/83e2f251-2ecf-45c5-9ae3-81741f3a62ab"
 					(page "9")
+				)
+			)
+			(project "SubPcb"
+				(path "/e0597968-f11c-42e6-8091-8a167b37e076"
+					(page "3")
 				)
 			)
 		)
@@ -948,6 +971,16 @@
 					(page "8")
 				)
 			)
+			(project "SubPcb"
+				(path "/e0597968-f11c-42e6-8091-8a167b37e076"
+					(page "2")
+				)
+			)
+		)
+	)
+	(sheet_instances
+		(path "/"
+			(page "1")
 		)
 	)
 )

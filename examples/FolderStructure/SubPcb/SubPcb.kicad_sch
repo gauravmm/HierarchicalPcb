@@ -1059,10 +1059,15 @@
 			)
 			(project "SubPcb"
 				(path "/e0597968-f11c-42e6-8091-8a167b37e076"
-					(reference "#PWR07")
+					(reference "#PWR01")
 					(unit 1)
 				)
 			)
+		)
+	)
+	(sheet_instances
+		(path "/"
+			(page "1")
 		)
 	)
 )
