@@ -197,13 +197,13 @@ def enforce_position(hd: HierarchicalData, targetBoard: pcbnew.BOARD):
             transform = PositionTransform(anchor_subpcb, anchor_target)
 
             # First, move the footprints:
-            err_footprints = enforce_position_footprints(
+            footprintNetMapping, err_footprints = enforce_position_footprints(
                 sheet, transform, fp_lookup, groupman.mover(group)
             )
             errors.extend(err_footprints)
 
             # Recreate traces:
-            err_traces = copy_traces(targetBoard, sheet, transform, groupman.mover(group))
+            err_traces = copy_traces(targetBoard, sheet, transform, groupman.mover(group), footprintNetMapping)
             errors.extend(err_traces)
 
             # Recreate Drawings
@@ -213,7 +213,7 @@ def enforce_position(hd: HierarchicalData, targetBoard: pcbnew.BOARD):
             # Recreate Zones Currently Using Work around
             # zone.SetPosition() doesn't change position
             # for some reason?
-            err_zones = copy_zones(targetBoard,sheet,transform, groupman.mover(group))
+            err_zones = copy_zones(targetBoard,sheet,transform, groupman.mover(group), footprintNetMapping)
             errors.extend(err_zones)
 
     #Fixes issues with traces lingering after being deleted
@@ -239,21 +239,12 @@ def clear_volatile_items(targetBoard: pcbnew.BOARD, group: pcbnew.PCB_GROUP):
             targetBoard.RemoveNative(item)
 
 
-def find_or_set_net(sheet: SchSheet, board: pcbnew.BOARD, net: pcbnew.NETINFO_ITEM):
-
-    if existing_net := board.FindNet("/" + sheet.human_name + net.GetNetname()):
-        return existing_net
-    elif existing_net := board.FindNet(net.GetNetname()):
-        return existing_net
-    else:
-        return board.FindNet(0)
-
-
 def copy_traces(
     targetBoard: pcbnew.BOARD,
     sheet: SchSheet,
     transform: PositionTransform,
     mover: GroupMoverType,
+    footprintNetMapping: Dict[int, int],
 ):
     # Instead of figuring out which nets are connected to the sub-PCB, we just copy all the raw traces
     # and let KiCad figure it out. It seems to work so far.
@@ -269,7 +260,9 @@ def copy_traces(
         # the start is handled by item.SetPosition
         targetBoard.Add(newTrack)
 
-        newTrack.SetNet(find_or_set_net(sheet, targetBoard, sourceTrack.GetNet()))
+        sourceNetCode = sourceTrack.GetNetCode()
+        newNetCode = footprintNetMapping.get(sourceNetCode, 0)
+        newTrack.SetNet(targetBoard.FindNet(newNetCode))
 
         newTrack.SetStart(transform.translate(sourceTrack.GetStart()))
         newTrack.SetEnd  (transform.translate(sourceTrack.GetEnd()  ))
@@ -313,6 +306,7 @@ def copy_zones(
     sheet: SchSheet,
     transform: PositionTransform,
     mover: GroupMoverType,
+    footprintNetMapping: Dict[int, int],
 ):
 
     errors = []
@@ -324,7 +318,9 @@ def copy_zones(
         
         newZone = sourceZone.Duplicate()
 
-        newZone.SetNet(find_or_set_net(sheet, targetBoard, sourceZone.GetNet()))
+        sourceNetCode = sourceZone.GetNetCode()
+        newNetCode = footprintNetMapping.get(sourceNetCode, 0)
+        newZone.SetNet(targetBoard.FindNet(newNetCode))
 
         targetBoard.Add(newZone)
 
@@ -403,6 +399,11 @@ def enforce_position_footprints(
     groupmv: GroupMoverType,
 ):
     errors = []
+
+    # The keys are the sub-pcb net codes
+    # The values are the new net codes
+    footprintNetMapping = {}
+
     # For each footprint in the sub-PCB, find the corresponding footprint on the board:
     for sourceFootprint in sheet.pcb.subboard.GetFootprints():
         # Find the corresponding footprint on the board:
@@ -428,6 +429,15 @@ def enforce_position_footprints(
         
         copy_footprint_fields(sourceFootprint, targetFootprint, transform)
 
+        # Assumes pads are ordered by the pad number
+        for sourcePadNum, sourcePad in enumerate(sourceFootprint.Pads()):
+            targetPad = targetFootprint.Pads()[sourcePadNum]
+
+            sourceCode = sourcePad.GetNetCode()
+            targetCode = targetPad.GetNetCode()
+            
+            footprintNetMapping[sourceCode] = targetCode
+
         # Move the footprint into the group if one is provided:
         if groupmv(targetFootprint):
             errors.append(
@@ -438,4 +448,4 @@ def enforce_position_footprints(
                 )
             )
 
-    return errors
+    return (footprintNetMapping, errors)
