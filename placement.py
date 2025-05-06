@@ -385,7 +385,7 @@ def copy_footprint_data(
     targetFootprint.SetLocalSolderPasteMarginRatio(
         sourceFootprint.GetLocalSolderPasteMarginRatio()
     )
-    targetFootprint.SetZoneConnection(sourceFootprint.GetZoneConnection())
+    targetFootprint.SetLocalZoneConnection(sourceFootprint.GetLocalZoneConnection())
 
     # Move the footprint:
     targetFootprint.SetPosition(transform.translate(sourceFootprint.GetPosition()))
