@@ -351,7 +351,7 @@ def copy_footprint_fields(
     #       This is not a bug. The replicated pcbs are behaving the 
     #       exact same as the original would when rotated.
 
-    if len(sourceFootprint.GetFields()) != len(targetFootprint.GetFields())
+    if len(sourceFootprint.GetFields()) != len(targetFootprint.GetFields()):
         logger.info("Number of footprint fields dont match")
         return
 
