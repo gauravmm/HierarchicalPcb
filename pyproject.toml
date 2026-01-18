@@ -1,0 +1,10 @@
+[project]
+name = "hierarchicalpcb"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "kicad-python>=0.5.0",
+    "wxpython>=4.2.4",
+]
