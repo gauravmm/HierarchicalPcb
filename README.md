@@ -1,4 +1,6 @@
-# HierarchicalPcb
+This project is retired, and has been superseded by [ProjectInstances](https://github.com/OfficialDyray/ProjectInstances/). Please use that instead!
+
+# ~HierarchicalPcb~
 
 This provides a true hierarchical PCB layout engine in KiCad, mirroring its hierarchical schematic capabilities.
 
